@@ -3,6 +3,7 @@ import { MODEL, type AskInput } from "./ask";
 export type Watch = { id: string; runAt: number } & (
   { status: "scheduled" } |
   { status: "complete"; value: string } |
+  { status: "stopped"; value?: string } |
   { status: "failed"; error: string }
 );
 
@@ -16,6 +17,17 @@ export type RecurringWatch = {
   lastRunAt?: number;
   checkAfter: number;
 };
+export type SavedWatch = Watch | RecurringWatch;
+
+export function scheduleLabel(schedule: Schedule): string {
+  if (schedule.type === "once") return "in 1 min";
+  const [minute, hour] = schedule.expression.split(" ");
+  if (hour === "*") {
+    return `every ${minute === "*" ? 1 : minute === "0" ? 60 : Number(minute.slice(2))} min`;
+  }
+  const time = Number(hour);
+  return `daily ${time % 12 || 12}${minute === "0" ? "" : ":" + minute.padStart(2, "0")}${time < 12 ? "am" : "pm"}`;
+}
 
 export function parseSchedule(value: unknown, timezone: unknown): Schedule | undefined {
   if (typeof value !== "string") return;
@@ -98,13 +110,18 @@ export async function scheduleRecurringWatch(apiKey: string, input: AskInput, sc
   return { id, recurring: true, status: "scheduled", checkAfter: 0 };
 }
 
-export async function stopRecurringWatch(apiKey: string, watch: RecurringWatch): Promise<RecurringWatch> {
+export async function stopWatch(apiKey: string, watch: SavedWatch): Promise<SavedWatch> {
   if (watch.status === "stopped") return watch;
   const response = await agentRequest(apiKey, `/automations/${encodeURIComponent(watch.id)}`, "DELETE");
   if (!response.ok && response.status !== 404) {
     throw new Error(`OpenAI Agents API returned ${response.status} while stopping the watch`);
   }
   return { ...watch, status: "stopped" };
+}
+
+export async function updateWatchSchedule(apiKey: string, watch: RecurringWatch, schedule: PeriodicSchedule) {
+  await agents(apiKey, `/automations/${encodeURIComponent(watch.id)}`, { expression: schedule.expression });
+  return { ...watch, checkAfter: 0 };
 }
 
 type Invocation = { session_id?: string; status: string; scheduled_at: number | null };

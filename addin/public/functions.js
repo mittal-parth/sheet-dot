@@ -91,7 +91,7 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
   let canceled = false;
   let timer;
   let displayed;
-  let recurring = false;
+  let lastWatch;
   const controller = new AbortController();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   invocation.onCanceled = () => {
@@ -108,18 +108,21 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
         workbook, question, row, schedule, timezone, address: invocation.address,
       }, "POST", controller.signal);
       if (canceled) return;
+      const revision = JSON.stringify([watch.id, watch.status, watch.lastRunAt]);
+      if (revision !== lastWatch) {
+        lastWatch = revision;
+        globalThis.refreshWatchSheet?.();
+      }
       if (watch.status === "failed") throw new Error(watch.error);
       const value = watch.value ?? (watch.status === "stopped" ? "Stopped" : "Scheduled");
       if (value !== displayed) {
         invocation.setResult(value);
         displayed = value;
       }
-      recurring = watch.recurring && watch.status !== "stopped";
-      if (watch.status !== "scheduled" && !recurring) return;
       timer = setTimeout(poll, 10_000);
     } catch (error) {
       if (canceled) return;
-      if (recurring && (error.retryable || error instanceof TypeError)) {
+      if (lastWatch && (error.retryable || error instanceof TypeError)) {
         timer = setTimeout(poll, 10_000);
         return;
       }

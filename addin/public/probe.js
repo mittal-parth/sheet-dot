@@ -6,6 +6,7 @@ Office.onReady(async () => {
   run.disabled = dialog.disabled = stopWatch.disabled = false;
   stopWatch.onclick = async () => {
     stopWatch.disabled = true;
+    stopWatch.setAttribute("aria-busy", "true");
     try {
       const address = await Excel.run(async context => {
         const cell = context.workbook.getActiveCell();
@@ -14,10 +15,12 @@ Office.onReady(async () => {
         return cell.address;
       });
       const { stopped } = await requestSheetdot("/watch", { workbook: await getWorkbookId(), address }, "DELETE");
-      report(stopped ? `Stopped recurring WATCH at ${address}.` : `No active recurring WATCH at ${address}.`);
+      watchSheetStatus(stopped ? `Stopped WATCH at ${address}.` : `No active WATCH at ${address}.`);
+      globalThis.refreshWatchSheet?.();
     } catch (error) {
-      report(error.message);
+      watchSheetStatus(error.message, "error");
     } finally {
+      stopWatch.removeAttribute("aria-busy");
       stopWatch.disabled = false;
     }
   };

@@ -1,12 +1,52 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Sheetdot compatibility</title>
-<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-<script defer src="functions.js"></script><script defer src="probe.js"></script></head>
-<body><h1>Workbook compatibility</h1>
-<p>Try <code>=AI.ASK("Which NASA mission first landed humans on the Moon? Use web search.")</code>. Pass a range as the second argument to include its values.</p>
-<p>WATCH supports <code>"every 1 min"</code>, <code>"daily 8am"</code>, and <code>"in 1 min"</code>. Select a recurring WATCH cell and stop its schedule before removing or moving it.</p>
-<button disabled id="stop-watch">Stop selected WATCH</button>
-<p>In empty cells, try =AI.PROBE(), =AI.PROBEARRAY(), and =AI.PROBESTREAM(). Expect text, a two-by-two grid, and a change from Working to Ready.</p>
-<button disabled id="run">Create test sheet</button>
-<button disabled id="dialog">Test external dialog</button>
-<pre id="status" aria-live="polite"></pre></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sheetdot</title>
+  <link rel="stylesheet" href="taskpane.css">
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script defer src="functions.js"></script>
+  <script defer src="automations.js"></script>
+  <script defer src="probe.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Automations</h1>
+    <p class="intro">Manage the WATCH schedules in this workbook.</p>
+    <button class="primary" id="open-automations" type="button" disabled>
+      <span>Open Automations</span><span aria-hidden="true">→</span>
+    </button>
+    <p class="feedback" id="automations-status" role="status"></p>
+
+    <dl class="instructions">
+      <div>
+        <dt>Reschedule a WATCH</dt>
+        <dd>Edit its Schedule cell. Try <code>every 15 min</code> or <code>daily 8am</code>.</dd>
+      </div>
+      <div>
+        <dt>Stop a schedule</dt>
+        <dd>Delete its table row, or select the original formula cell and stop it here.</dd>
+      </div>
+    </dl>
+    <button class="secondary" id="stop-watch" type="button" disabled>Stop selected WATCH</button>
+
+    <details class="diagnostics">
+      <summary>Workbook diagnostics</summary>
+      <div class="diagnostics-body">
+        <p>Use the test formulas in empty cells to check scalar, spilled, and streaming results.</p>
+        <ul class="formulas">
+          <li><code>=AI.PROBE()</code></li>
+          <li><code>=AI.PROBEARRAY()</code></li>
+          <li><code>=AI.PROBESTREAM()</code></li>
+        </ul>
+        <div class="diagnostic-actions">
+          <button class="secondary" id="run" type="button" disabled>Create test sheet</button>
+          <button class="secondary" id="dialog" type="button" disabled>Test external dialog</button>
+        </div>
+        <pre id="status" aria-live="polite"></pre>
+      </div>
+    </details>
+  </main>
+</body>
+</html>
