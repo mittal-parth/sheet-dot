@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Sheetdot — product mockup</title>
+<style>
+  :root {
+    --xl:#107c41; --grid:#e1e1e1; --head:#f3f3f3; --ink:#242424; --muted:#616161;
+    --changed:#fff4b8; --amber:#ffe0b2; --amber-ink:#8a4b00; --green:#dff3e4; --green-ink:#0f6b33;
+    --red:#fde7e9; --red-ink:#a4262c; --note:#fffbd6;
+    font-family:"Segoe UI",-apple-system,system-ui,sans-serif; color:var(--ink);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;height:100vh;display:flex;flex-direction:column;font-size:13px;background:#fff}
+  .titlebar{background:var(--xl);color:#fff;height:38px;display:flex;align-items:center;padding:0 14px;gap:12px}
+  .tabs{display:flex;gap:20px;padding:0 14px;border-bottom:1px solid var(--grid);height:32px;align-items:flex-end;color:var(--muted)}
+  .tabs span{padding-bottom:6px}
+  .tabs .on{color:var(--xl);border-bottom:2px solid var(--xl);font-weight:600}
+  .ribbon{display:flex;gap:2px;padding:6px 10px;border-bottom:1px solid var(--grid);background:#fafafa}
+  .btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:80px;padding:6px 8px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+  .btn:hover{background:#e9f5ee;border-color:#bfe0cc}
+  .btn .ic{font-size:19px;color:var(--xl);line-height:1}
+  .btn .lb{font-size:12px}
+  .sep{width:1px;background:var(--grid);margin:2px 6px}
+  .fx{height:30px;display:flex;align-items:center;border-bottom:1px solid var(--grid);font-family:Consolas,Menlo,monospace}
+  .fx .ref{width:64px;border-right:1px solid var(--grid);padding:0 8px;color:var(--muted)}
+  .fx .fxl{width:32px;text-align:center;color:var(--muted);font-style:italic;border-right:1px solid var(--grid)}
+  .fx .f{padding:0 10px;white-space:nowrap;overflow:hidden}
+  .fn{color:var(--xl);font-weight:700}
+  .wrap{flex:1;overflow:auto}
+  table{border-collapse:collapse}
+  th,td{border:1px solid var(--grid);height:26px;padding:0 8px;white-space:nowrap;position:relative}
+  thead th{background:var(--head);color:var(--muted);font-weight:400;position:sticky;top:0;z-index:2}
+  tbody th{background:var(--head);color:var(--muted);font-weight:400;width:36px}
+  td{min-width:96px;cursor:cell}
+  td.sel{outline:2px solid var(--xl);outline-offset:-2px}
+  tr.h td{font-weight:600}
+  td.qh{color:#5a3fc0}
+  /* native-looking note marker (Excel shows a small red triangle for notes) */
+  td.note::after{content:"";position:absolute;right:0;top:0;border-left:6px solid transparent;border-top:6px solid #d13438}
+  td.busy{color:var(--muted);font-style:italic}
+  td.grey{color:#8a8a8a;font-style:italic}
+  td.changed{background:var(--changed)!important}
+  td.amber{background:var(--amber)!important;color:var(--amber-ink)}
+  td.green{background:var(--green)!important;color:var(--green-ink)}
+  tr.cfred td{background:var(--red);color:var(--red-ink)}
+  td.cb{text-align:center;min-width:52px}
+  td.cb input{width:15px;height:15px;accent-color:var(--xl);cursor:pointer}
+  td.num{text-align:right}
+  .sheets{height:30px;border-top:1px solid var(--grid);display:flex;padding-left:40px}
+  .sheets div{padding:6px 14px;cursor:pointer;color:var(--muted)}
+  .sheets .on{color:var(--xl);border-bottom:3px solid var(--xl);font-weight:600}
+  .notebox{position:fixed;background:var(--note);border:1px solid #c8c08a;box-shadow:2px 2px 6px rgba(0,0,0,.15);padding:6px 9px;font-size:12px;max-width:260px;display:none;z-index:30}
+  .notebox b{display:block;margin-bottom:2px}
+  .toast{position:fixed;bottom:44px;left:40%;transform:translateX(-50%);background:#323130;color:#fff;padding:8px 14px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:40}
+  .toast.on{opacity:1}
+  /* Office dialog for Connect */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
+  .dialog{width:380px;background:#fff;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.25);overflow:hidden}
+  .dialog .dh{padding:10px 14px;border-bottom:1px solid var(--grid);font-size:12px;color:var(--muted)}
+  .dialog .db{padding:18px}
+  .dialog .db h3{margin:0 0 8px;font-size:16px}
+  .dialog ul{margin:8px 0 14px;padding-left:18px;color:var(--muted)}
+  .dialog button{background:var(--xl);color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
+  .dialog .cancel{background:#fff;color:var(--ink);border:1px solid #c8c8c8;margin-left:6px}
+  /* mockup-only controls, visually separated from "Excel" */
+  .demo{position:fixed;right:12px;bottom:40px;width:310px;background:#1f1f1f;color:#eee;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.5;z-index:45}
+  .demo .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#aaa}
+  .demo ol{margin:6px 0 8px;padding-left:18px}
+  .demo li.done{color:#7fd89a;text-decoration:line-through}
+  .demo button{background:#444;color:#fff;border:0;border-radius:4px;padding:6px 10px;cursor:pointer;margin-right:6px}
+  .demo button.pri{background:#6b4fd8}
+</style>
+</head>
+<body>
+<div class="titlebar"><b>Excel</b><span style="opacity:.9" id="docname">Family accounts.xlsx · Saved to OneDrive</span></div>
+<div class="tabs"><span>File</span><span>Home</span><span>Insert</span><span>Formulas</span><span>Data</span><span class="on">✦ Sheetdot</span></div>
+<div class="ribbon">
+  <div class="btn" id="b-fill"><span class="ic">✦</span><span class="lb">Fill column</span></div>
+  <div class="btn" id="b-refresh"><span class="ic">↻</span><span class="lb">Refresh</span></div>
+  <div class="btn" id="b-watch"><span class="ic">⏰</span><span class="lb">Keep fresh</span></div>
+  <div class="sep"></div>
+  <div class="btn" id="b-connect"><span class="ic">🔌</span><span class="lb">Connect</span></div>
+</div>
+<div class="fx"><span class="ref" id="ref">A1</span><span class="fxl">fx</span><span class="f" id="fx"></span></div>
+<div class="wrap"><table id="grid"></table></div>
+<div class="sheets" id="sheets"></div>
+<div class="notebox" id="note"></div>
+<div class="toast" id="toast"></div>
+<div class="scrim" id="scrim"><div class="dialog">
+  <div class="dh">Office dialog · connect.composio.dev</div>
+  <div class="db"><h3>Allow Sheetdot to read your Gmail?</h3>
+    <div>Sheetdot will be able to:</div>
+    <ul><li>Read emails (bank alerts, bills)</li><li>Send email — only when you tick an action</li></ul>
+    <button id="allow">Allow</button><button class="cancel" id="deny">Cancel</button></div>
+</div></div>
+
+<div class="demo" id="demo"></div>
+
+<script>
+/* ============ workbook model ============ */
+const COLS=8, L=i=>String.fromCharCode(65+i), $=id=>document.getElementById(id);
+const C=(v,o={})=>({v,...o});            // cell
+let gmail=false;
+
+const WB={
+  "Family accounts":{ rows:[2,7], cf:{col:"E",cls:"cfred"}, cells:{
+    A1:C("Expense"),B1:C("Amount ₹"),C1:C("Due day"),D1:C("? Paid this month"),E1:C("? Needs attention"),F1:C("Next step"),G1:C("Do it"),
+    A2:C("Home loan EMI (HDFC)"),B2:C(32400),C2:C(5),
+    A3:C("LIC premium"),B3:C(18200),C3:C(28),
+    A4:C("Airtel fibre"),B4:C(1179),C4:C(15),
+    A5:C("Netflix"),B5:C(649),C5:C(20),
+    A6:C("Maid salary"),B6:C(6000),C6:C(1),
+    A7:C("BESCOM electricity"),B7:C(2140),C7:C(10),
+  }},
+  "Flat hunt":{ rows:[2,7], cells:{ A1:C("",{f:'=AI.LIST("2BHK flats in HSR Layout under ₹40k, with link", 6)'}) }},
+  "About me":{ rows:[2,4], cells:{
+    A1:C("Connections"),B1:C("Status"),C1:C("On for this workbook"),
+    A2:C("Gmail"),B2:C("not connected",{grey:1}),C2:C("—"),
+    A3:C("Google Calendar"),B3:C("not connected",{grey:1}),C3:C("—"),
+    A4:C("Web search"),B4:C("built in"),C4:C("yes"),
+    A6:C("About me"),B6:C("(the agent reads this)"),
+    A7:C("Bank"),B7:C("HDFC savings, alerts to Gmail"),
+    A8:C("Office"),B8:C("Koramangala, 9:30 start"),
+    A9:C("Maid"),B9:C("2 paid leave days / month"),
+    A10:C("LIC agent"),B10:C("Ramesh, ramesh.lic@example.com"),
+  }},
+  "Automations":{ rows:[2,2], n:0, cells:{ A1:C("Cell"),B1:C("Asks"),C1:C("Schedule"),D1:C("Last run"),E1:C("Next run"),F1:C("Status") }},
+};
+const ANS={
+  D:[["✓ 5 Nov · HDFC alert","Debit alert email from HDFC Bank, 5 Nov 09:12: ₹32,400 EMI"],
+     ["✗ not found","No payment to LIC found in Gmail since 1 Nov"],
+     ["✓ 15 Nov · Airtel","Airtel payment receipt email, 15 Nov"],
+     ["✓ 20 Nov · card alert","HDFC credit card alert, 20 Nov: NETFLIX ₹649"],
+     ["✓ 1 Nov · UPI","HDFC UPI debit alert, 1 Nov: ₹6,000 to Sunita"],
+     ["✗ not found","No BESCOM payment found; bill email received 2 Nov"]],
+  E:[[false,"Paid"],[true,"Unpaid, due 28 Nov (in 7 days)"],[false,"Paid"],[false,"Paid"],[false,"Paid"],[true,"Unpaid and overdue since 10 Nov"]],
+};
+let cur="Family accounts", sel="D1", step=0;
+
+/* ============ render ============ */
+const grid=$("grid");
+function fmt(v){ if(v===true)return"TRUE"; if(v===false)return"FALSE"; if(typeof v==="number")return v.toLocaleString("en-IN"); return v??""; }
+function render(){
+  const s=WB[cur];
+  let h="<thead><tr><th></th>"+[...Array(COLS)].map((_,i)=>`<th>${L(i)}</th>`).join("")+"</tr></thead><tbody>";
+  for(let r=1;r<=18;r++){
+    let rc=r===1?"h":"";
+    if(s.cf && r>=s.rows[0] && r<=s.rows[1] && s.cells[s.cf.col+r]?.v===true) rc+=" "+s.cf.cls;   // native conditional formatting
+    h+=`<tr class="${rc}"><th>${r}</th>`;
+    for(let c=0;c<COLS;c++){
+      const a=L(c)+r, x=s.cells[a]||{};
+      const k=[x.note?"note":"",x.busy?"busy":"",x.grey?"grey":"",x.changed?"changed":"",x.amber?"amber":"",x.green?"green":"",
+               x.cb!==undefined?"cb":"",typeof x.v==="number"?"num":"",(r===1&&String(x.v||"").startsWith("?"))?"qh":"",a===sel?"sel":""].join(" ");
+      const inner = x.cb!==undefined ? `<input type="checkbox" ${x.cb?"checked":""} data-cb="${a}">` : fmt(x.v);
+      h+=`<td data-a="${a}" class="${k}">${inner}</td>`;
+    }
+    h+="</tr>";
+  }
+  grid.innerHTML=h+"</tbody>";
+  grid.querySelectorAll("td").forEach(td=>td.onclick=e=>{
+    if(e.target.dataset.cb) return;
+    sel=td.dataset.a; const x=WB[cur].cells[sel]; if(x) x.changed=false;   // yellow clears on select
+    render();
+  });
+  grid.querySelectorAll("input[data-cb]").forEach(i=>i.onchange=()=>tick(i.dataset.cb));
+  $("ref").textContent=sel;
+  const x=s.cells[sel]||{};
+  $("fx").innerHTML=x.f? x.f.replace(/^=(AI\.[A-Z]+)/,'=<span class="fn">$1</span>') : x.cb!==undefined ? (x.cb?"TRUE":"FALSE") : fmt(x.v);
+  $("sheets").innerHTML=Object.keys(WB).map(n=>`<div class="${n===cur?"on":""}">${n==="Automations"?"⏰ ":n==="About me"?"🙋 ":""}${n}</div>`).join("");
+  document.querySelectorAll(".sheets div").forEach(d=>d.onclick=()=>{cur=d.textContent.replace(/^(⏰|🙋) /,"");sel="A1";render();});
+  $("docname").textContent=(cur==="Flat hunt"?"Flat hunt":"Family accounts")+".xlsx · Saved to OneDrive";
+  bump();
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),2600);}
+
+/* notes: native-looking hover box */
+document.addEventListener("mouseover",e=>{
+  const td=e.target.closest("td.note"); const nb=$("note");
+  if(!td){nb.style.display="none";return;}
+  const x=WB[cur].cells[td.dataset.a]; const r=td.getBoundingClientRect();
+  nb.innerHTML=`<b>Sheetdot:</b>${x.note}`; nb.style.left=(r.right+4)+"px"; nb.style.top=r.top+"px"; nb.style.display="block";
+});
+
+/* ============ ribbon ============ */
+$("b-fill").onclick=async()=>{
+  const s=WB[cur], col=sel[0], hdr=String(s.cells[col+"1"]?.v||"");
+  if(cur==="Flat hunt" && col==="E" && hdr.startsWith("?")) return fillFlat(col,hdr);
+  if(cur!=="Family accounts"||!ANS[col]||!hdr.startsWith("?")) return toast("Select a header that starts with ? first");
+  const q=hdr.slice(1).trim(), fn=col==="E"?"AI.CHECK":"AI.ASK";
+  for(let r=2;r<=7;r++) s.cells[col+r]=C("⏳",{f:`=${fn}("${q}", A${r}:C${r})`,busy:1});
+  render();
+  for(let r=2;r<=7;r++){
+    await sleep(350+Math.random()*450);
+    const c=s.cells[col+r]; c.busy=0;
+    if(col==="D" && !gmail){ c.v="🔌 Needs Gmail"; c.grey=1; c.note="This question needs your mail. Press Connect on the ribbon."; }
+    else { c.v=ANS[col][r-2][0]; c.note=ANS[col][r-2][1]; c.grey=0; }
+    render();
+  }
+  if(col==="D"&&!gmail) toast("Needs Gmail → press 🔌 Connect");
+  if(col==="E") toast("Rows turned red by Excel's own conditional formatting rule: =$E2=TRUE");
+  bump();
+};
+$("b-connect").onclick=()=>{$("scrim").style.display="flex";};
+$("deny").onclick=()=>{$("scrim").style.display="none";};
+$("allow").onclick=async()=>{
+  $("scrim").style.display="none"; gmail=true;
+  Object.assign(WB["About me"].cells.B2,{v:"connected ✓",grey:0}); WB["About me"].cells.C2.v="yes";
+  toast("Gmail connected. Re-running cells that needed it…");
+  const s=WB["Family accounts"];
+  for(let r=2;r<=7;r++){ const c=s.cells["D"+r]; if(c&&c.grey){ Object.assign(c,{v:"⏳",busy:1,grey:0}); } }
+  render();
+  for(let r=2;r<=7;r++){ const c=s.cells["D"+r]; if(!c||!c.busy) continue; await sleep(400+Math.random()*400);
+    Object.assign(c,{v:ANS.D[r-2][0],note:ANS.D[r-2][1],busy:0}); render(); }
+  bump();
+};
+$("b-refresh").onclick=async()=>{
+  if(cur!=="Flat hunt") return toast("Refresh re-asks the selected AI cells. Saved answers otherwise never change on their own.");
+  const s=WB["Flat hunt"]; s.cells.A1.v="⏳"; s.cells.A1.busy=1; render(); await sleep(1300);
+  const spill=[["Listing","Rent ₹","Deposit","Link","? Commute to office at 9am"],
+    ["2BHK, Sector 2, semi-furnished",36000,"3 months","nobroker.in/…"],["2BHK, Sector 7, gated",39500,"4 months","magicbricks.com/…"],
+    ["2BHK, Sector 1, near BDA",34000,"2 months","housing.com/…"],["2BHK, Sector 6, pet friendly",38000,"3 months","nobroker.in/…"],
+    ["2BHK, Sector 4, new building",40000,"5 months","99acres.com/…"],["2BHK, Sector 3, top floor",33500,"3 months","nobroker.in/…"]];
+  spill.forEach((row,i)=>row.forEach((v,j)=>{const a=L(j)+(i+1); if(a==="A1") Object.assign(s.cells.A1,{v,busy:0,note:"Web search, 6 listings, just now"}); else s.cells[a]=C(v);}));
+  toast("AI.LIST spilled a table. E1 is a ? header you can Fill."); sel="E1"; render(); bump();
+};
+async function fillFlat(col,hdr){
+  const s=WB["Flat hunt"], vals=["24 min","31 min","19 min","28 min","26 min","22 min"];
+  for(let r=2;r<=7;r++) s.cells[col+r]=C("⏳",{f:`=AI.ASK("${hdr.slice(1).trim()}", A${r}:D${r})`,busy:1});
+  render();
+  for(let r=2;r<=7;r++){await sleep(350+Math.random()*400); Object.assign(s.cells[col+r],{v:vals[r-2],busy:0,note:"Maps estimate to Koramangala (from About me), weekday 9:00"}); render();}
+  bump();
+}
+$("b-watch").onclick=()=>{
+  const s=WB[cur], col=sel[0], c2=s.cells[col+"2"];
+  if(!c2||!c2.f) return toast("Select an AI column header first");
+  const q=String(s.cells[col+"1"].v).replace(/^\?\s*/,"");
+  for(let r=s.rows[0];r<=s.rows[1];r++){const c=s.cells[col+r]; if(c&&c.f) c.f=c.f.replace(/=AI\.(ASK|CHECK)\((.*)\)/,'=AI.WATCH($2, "every 1 min")');}
+  const A=WB.Automations; A.n++; const n=A.n+1;
+  Object.assign(A.cells,{["A"+n]:C(`${cur}!${col}2:${col}${s.rows[1]}`),["B"+n]:C(q),["C"+n]:C("every 1 min"),["D"+n]:C("—"),["E"+n]:C("in 1 min"),["F"+n]:C("● active")});
+  A.rows=[2,n]; toast("Now a standing order. See the ⏰ Automations sheet."); render(); bump();
+};
+
+/* ============ "overnight": what a WATCH run leaves behind ============ */
+async function overnight(){
+  cur="Family accounts"; sel="A1"; render(); toast("You closed Excel. The automation kept running… reopening."); await sleep(1200);
+  const s=WB["Family accounts"];
+  // BESCOM got paid overnight → value changes, row stops being red
+  Object.assign(s.cells.D7,{v:"✓ 21 Nov · BESCOM",note:"BESCOM payment confirmation email, 21 Nov 07:40",changed:1});
+  Object.assign(s.cells.E7,{v:false,note:"Paid on 21 Nov",changed:1});
+  // proposed actions: amber + native checkbox in the same row
+  s.cells.F3=C("📧 Email Ramesh (LIC) for the premium link",{amber:1,note:"Draft: “Hi Ramesh, could you send the payment link for policy …4471, due 28 Nov? Thanks”"});
+  s.cells.G3=C("",{cb:false,amber:1});
+  s.cells.F2=C("📅 Reminder: EMI on 4 Dec",{amber:1,note:"Adds a Google Calendar event, 4 Dec 9:00"});
+  s.cells.G2=C("",{cb:false,amber:1});
+  // a WATCH can add rows to its table
+  s.cells.A8=C("Spotify (new)",{changed:1,note:"Found a new subscription: Spotify receipt email, 19 Nov"}); s.cells.B8=C(119,{changed:1}); s.cells.C8=C(19,{changed:1});
+  s.cells.D8=C("✓ 19 Nov · card alert",{changed:1,note:"HDFC credit card alert: SPOTIFY ₹119",f:'=AI.WATCH("Paid this month", A8:C8, "every 1 min")'});
+  s.cells.E8=C(false,{changed:1}); s.rows=[2,8];
+  const A=WB.Automations; for(let r=2;r<=A.rows[1];r++){ if(A.cells["D"+r]) {A.cells["D"+r].v="21 Nov 08:00 ✓"; A.cells["E"+r].v="in 1 min";} }
+  render(); bump();
+}
+function tick(a){
+  const s=WB[cur], c=s.cells[a]; c.cb=true; const row=a.slice(1), f=s.cells["F"+row];
+  render(); toast("Approved. Running it for real…");
+  setTimeout(()=>{
+    const what=row==="3"?"✓ email sent 9:02":"✓ added to Calendar 9:02";
+    Object.assign(f,{v:what,amber:0,green:1}); Object.assign(c,{amber:0,green:1}); render(); bump();
+  },1200);
+}
+
+/* ============ mockup-only guide ============ */
+const STEPS=[
+ "Click D1 (“? Paid this month”) → ✦ Fill column",
+ "Cells say 🔌 Needs Gmail → press 🔌 Connect → Allow",
+ "Click E1 → ✦ Fill column (rows go red via native conditional formatting)",
+ "Click D1 → ⏰ Keep fresh (see ⏰ Automations sheet)",
+ "Press “Next morning” below",
+ "Yellow = changed. Tick an amber ☐ to approve",
+ "Second act: open Flat hunt → ↻ Refresh, then click E1 → ✦ Fill column",
+];
+function bump(){
+  const s=WB["Family accounts"];
+  const done=[ !!s.cells.D2?.f, gmail && s.cells.D2?.v?.startsWith("✓"), !!s.cells.E2?.f && !s.cells.E2.busy,
+    WB.Automations.n>0, !!s.cells.F3, s.cells.G3?.cb||s.cells.G2?.cb, !!WB["Flat hunt"].cells.E2 && !WB["Flat hunt"].cells.E2.busy ];
+  step=done.filter(Boolean).length; renderDemo(done);
+}
+function renderDemo(done=[]){
+  $("demo").innerHTML=`<div class="tag">Mockup controls — not part of the product</div>
+   <ol>${STEPS.map((t,i)=>`<li class="${done[i]?"done":""}">${t}</li>`).join("")}</ol>
+   <button class="pri" id="night">☾ Next morning</button><button id="reset">Reset</button>`;
+  $("night").onclick=overnight; $("reset").onclick=()=>location.reload();
+}
+render();
+</script>
+</body>
+</html>
