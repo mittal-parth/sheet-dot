@@ -1,0 +1,18 @@
+{
+  "name": "sheetdot-addin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run typecheck && node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "serve": "node scripts/serve.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@types/custom-functions-runtime": "1.6.13",
+    "@types/office-js": "1.0.618",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3"
+  }
+}

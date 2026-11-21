@@ -1,6 +1,6 @@
 # Plan: Sheetdot, Excel as the control plane for personal agents
 
-> Status: **product settled, build not started.** Clickable visual spec: [docs/mockup.html](docs/mockup.html).
+> Status: **Excel compatibility add-in built.** Live Excel and OpenAI checks are pending. See the [test guide](addin/README.md) and [clickable visual spec](docs/mockup.html).
 
 ## Context
 

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xsi:type="TaskPaneApp">
+  <Id>e3775fcd-8279-4d40-b6a6-627943e52d04</Id>
+  <Version>0.1.0.0</Version>
+  <ProviderName>Sheetdot</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Sheetdot Compatibility"/>
+  <Description DefaultValue="Check which Excel features Sheetdot can use in this workbook."/>
+  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+  <SupportUrl DefaultValue="https://github.com/mittal-parth/sheet-dot"/>
+  <AppDomains>
+    <AppDomain>https://localhost:3000</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="SharedRuntime" MinVersion="1.1"/>
+    </Sets>
+  </Requirements>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://localhost:3000/runtime.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <Runtimes>
+          <Runtime resid="Runtime.Url" lifetime="long"/>
+        </Runtimes>
+        <AllFormFactors>
+          <ExtensionPoint xsi:type="CustomFunctions">
+            <Script><SourceLocation resid="Runtime.Url"/></Script>
+            <Page><SourceLocation resid="Runtime.Url"/></Page>
+            <Metadata><SourceLocation resid="Functions.Metadata"/></Metadata>
+            <Namespace resid="Functions.Namespace"/>
+          </ExtensionPoint>
+        </AllFormFactors>
+        <DesktopFormFactor>
+          <FunctionFile resid="Runtime.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Sheetdot.Compatibility">
+                <Label resid="Group.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16"/>
+                  <bt:Image size="32" resid="Icon.32"/>
+                  <bt:Image size="80" resid="Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="Sheetdot.RunChecks">
+                  <Label resid="Checks.Label"/>
+                  <Supertip>
+                    <Title resid="Checks.Label"/>
+                    <Description resid="Checks.Description"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>runSheetdotChecks</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="Sheetdot.ShowChecks">
+                  <Label resid="Pane.Label"/>
+                  <Supertip>
+                    <Title resid="Pane.Label"/>
+                    <Description resid="Pane.Description"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="Runtime.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
+        <bt:Image id="Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+        <bt:Image id="Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Runtime.Url" DefaultValue="https://localhost:3000/runtime.html"/>
+        <bt:Url id="Functions.Metadata" DefaultValue="https://localhost:3000/functions.json"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Functions.Namespace" DefaultValue="AI"/>
+        <bt:String id="Group.Label" DefaultValue="Sheetdot"/>
+        <bt:String id="Checks.Label" DefaultValue="Run checks"/>
+        <bt:String id="Pane.Label" DefaultValue="Test dialog"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Checks.Description" DefaultValue="Create the Sheetdot compatibility worksheet and run the Excel checks."/>
+        <bt:String id="Pane.Description" DefaultValue="Test an Office pop-up before connecting an account."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
