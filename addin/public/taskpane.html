@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Sheetdot compatibility</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script defer src="functions.js"></script><script defer src="probe.js"></script></head>
+<body><h1>Workbook compatibility</h1>
+<p>Try <code>=AI.ASK("Which NASA mission first landed humans on the Moon? Use web search.")</code>. Pass a range as the second argument to include its values.</p>
+<p>In empty cells, try =AI.PROBE(), =AI.PROBEARRAY(), and =AI.PROBESTREAM(). Expect text, a two-by-two grid, and a change from Working to Ready.</p>
+<button disabled id="run">Create test sheet</button>
+<button disabled id="dialog">Test external dialog</button>
+<pre id="status" aria-live="polite"></pre></body></html>

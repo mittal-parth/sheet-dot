@@ -1,0 +1,14 @@
+{
+  "name": "sheetdot-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 3000 --local-protocol https --https-cert-path \"$HOME/.office-addin-dev-certs/localhost.crt\" --https-key-path \"$HOME/.office-addin-dev-certs/localhost.key\"",
+    "check": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261121.1",
+    "office-addin-dev-certs": "^3.0.1",
+    "wrangler": "^4.166.0"
+  }
+}

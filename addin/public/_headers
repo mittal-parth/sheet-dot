@@ -1,0 +1,5 @@
+/functions.json
+  Access-Control-Allow-Origin: *
+
+/functions.js
+  Access-Control-Allow-Origin: *

@@ -1,0 +1,66 @@
+{
+  "functions": [
+    {
+      "id": "ASK",
+      "name": "ASK",
+      "description": "Ask Sheetdot a question and reuse the saved answer when the inputs are unchanged.",
+      "parameters": [
+        { "name": "question", "type": "string", "dimensionality": "scalar" },
+        { "name": "row", "type": "any", "dimensionality": "matrix", "optional": true }
+      ],
+      "result": { "type": "string", "dimensionality": "scalar" },
+      "options": { "stream": true, "requiresStreamAddress": true }
+    },
+    {
+      "id": "WATCH",
+      "name": "WATCH",
+      "description": "Run one OpenAI check in a minute, even when this workbook is closed.",
+      "parameters": [
+        { "name": "question", "type": "string", "dimensionality": "scalar" },
+        { "name": "row", "type": "any", "dimensionality": "matrix" },
+        { "name": "schedule", "type": "string", "dimensionality": "scalar" }
+      ],
+      "result": { "type": "string", "dimensionality": "scalar" },
+      "options": { "stream": true, "requiresStreamAddress": true }
+    },
+    {
+      "id": "PROBE",
+      "name": "PROBE",
+      "description": "Sheetdot compatibility test",
+      "parameters": [],
+      "result": {
+        "type": "string",
+        "dimensionality": "scalar"
+      },
+      "options": {
+        "stream": false
+      }
+    },
+    {
+      "id": "PROBEARRAY",
+      "name": "PROBEARRAY",
+      "description": "Sheetdot compatibility test",
+      "parameters": [],
+      "result": {
+        "type": "number",
+        "dimensionality": "matrix"
+      },
+      "options": {
+        "stream": false
+      }
+    },
+    {
+      "id": "PROBESTREAM",
+      "name": "PROBESTREAM",
+      "description": "Sheetdot compatibility test",
+      "parameters": [],
+      "result": {
+        "type": "string",
+        "dimensionality": "scalar"
+      },
+      "options": {
+        "stream": true
+      }
+    }
+  ]
+}
