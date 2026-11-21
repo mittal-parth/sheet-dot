@@ -30,14 +30,15 @@ async function getWorkbookId() {
   return workbookId;
 }
 
-async function requestSheetdot(path, input) {
+async function requestSheetdot(path, input, method = "POST", signal) {
   const response = await fetch(path, {
-    method: "POST",
+    method,
+    signal,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error);
+  if (!response.ok) throw Object.assign(new Error(result.error), { retryable: response.status >= 500 });
   return result;
 }
 
@@ -89,10 +90,14 @@ CustomFunctions.associate("ASK", async (question, row, invocation) => {
 CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
   let canceled = false;
   let timer;
-  let announced = false;
+  let displayed;
+  let recurring = false;
+  const controller = new AbortController();
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   invocation.onCanceled = () => {
     canceled = true;
     clearTimeout(timer);
+    controller.abort();
   };
 
   async function poll() {
@@ -100,21 +105,25 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
       const workbook = await getWorkbookId();
       if (canceled) return;
       const watch = await requestSheetdot("/watch", {
-        workbook, question, row, schedule, address: invocation.address,
-      });
+        workbook, question, row, schedule, timezone, address: invocation.address,
+      }, "POST", controller.signal);
       if (canceled) return;
       if (watch.status === "failed") throw new Error(watch.error);
-      if (watch.status === "complete") {
-        invocation.setResult(watch.value);
-        return;
+      const value = watch.value ?? (watch.status === "stopped" ? "Stopped" : "Scheduled");
+      if (value !== displayed) {
+        invocation.setResult(value);
+        displayed = value;
       }
-      if (!announced) {
-        invocation.setResult("Scheduled");
-        announced = true;
-      }
+      recurring = watch.recurring && watch.status !== "stopped";
+      if (watch.status !== "scheduled" && !recurring) return;
       timer = setTimeout(poll, 10_000);
     } catch (error) {
-      if (!canceled) invocation.setResult(new CustomFunctions.Error(
+      if (canceled) return;
+      if (recurring && (error.retryable || error instanceof TypeError)) {
+        timer = setTimeout(poll, 10_000);
+        return;
+      }
+      invocation.setResult(new CustomFunctions.Error(
         CustomFunctions.ErrorCode.notAvailable, error.message
       ));
     }

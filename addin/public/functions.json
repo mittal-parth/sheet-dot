@@ -14,11 +14,11 @@
     {
       "id": "WATCH",
       "name": "WATCH",
-      "description": "Run one OpenAI check in a minute, even when this workbook is closed.",
+      "description": "Run an OpenAI check once or on a recurring schedule, even when this workbook is closed.",
       "parameters": [
         { "name": "question", "type": "string", "dimensionality": "scalar" },
         { "name": "row", "type": "any", "dimensionality": "matrix" },
-        { "name": "schedule", "type": "string", "dimensionality": "scalar" }
+        { "name": "schedule", "type": "string", "dimensionality": "scalar", "description": "For example, every 1 min, daily 8am, or in 1 min." }
       ],
       "result": { "type": "string", "dimensionality": "scalar" },
       "options": { "stream": true, "requiresStreamAddress": true }

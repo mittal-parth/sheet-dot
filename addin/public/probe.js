@@ -2,7 +2,25 @@ const report = message => document.querySelector("#status").append(message + "\n
 Office.onReady(async () => {
   const run = document.querySelector("#run");
   const dialog = document.querySelector("#dialog");
-  run.disabled = dialog.disabled = false;
+  const stopWatch = document.querySelector("#stop-watch");
+  run.disabled = dialog.disabled = stopWatch.disabled = false;
+  stopWatch.onclick = async () => {
+    stopWatch.disabled = true;
+    try {
+      const address = await Excel.run(async context => {
+        const cell = context.workbook.getActiveCell();
+        cell.load("address");
+        await context.sync();
+        return cell.address;
+      });
+      const { stopped } = await requestSheetdot("/watch", { workbook: await getWorkbookId(), address }, "DELETE");
+      report(stopped ? `Stopped recurring WATCH at ${address}.` : `No active recurring WATCH at ${address}.`);
+    } catch (error) {
+      report(error.message);
+    } finally {
+      stopWatch.disabled = false;
+    }
+  };
   try {
     await Office.addin.setStartupBehavior(Office.StartupBehavior.load);
     report("Shared runtime loaded at " + new Date().toLocaleTimeString());
