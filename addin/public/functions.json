@@ -12,6 +12,28 @@
       "options": { "stream": true, "requiresStreamAddress": true }
     },
     {
+      "id": "CHECK",
+      "name": "CHECK",
+      "description": "Evaluate a condition using workbook data and return TRUE or FALSE.",
+      "parameters": [
+        { "name": "condition", "type": "string", "dimensionality": "scalar" },
+        { "name": "row", "type": "any", "dimensionality": "matrix", "optional": true }
+      ],
+      "result": { "type": "boolean", "dimensionality": "scalar" },
+      "options": { "stream": true, "requiresStreamAddress": true }
+    },
+    {
+      "id": "LIST",
+      "name": "LIST",
+      "description": "Spill a table with column headers and up to the requested number of matching rows.",
+      "parameters": [
+        { "name": "request", "type": "string", "dimensionality": "scalar" },
+        { "name": "count", "type": "number", "dimensionality": "scalar", "description": "Maximum number of data rows, from 1 to 50." }
+      ],
+      "result": { "type": "any", "dimensionality": "matrix" },
+      "options": { "cancelable": true, "requiresAddress": true }
+    },
+    {
       "id": "WATCH",
       "name": "WATCH",
       "description": "Run an OpenAI check once or on a recurring schedule, even when this workbook is closed.",

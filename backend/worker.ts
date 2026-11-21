@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { answerQuestion, modelInput, type Answer, type AskInput, type Preferences } from "./ask";
+import { answerQuestion, MAX_LIST_ROWS, modelInput, type Answer, type AnswerInput, type AskInput, type Preferences } from "./ask";
 import {
   checkRecurringWatch, checkWatch, parseSchedule, scheduleLabel, scheduleRecurringWatch, scheduleWatch,
   stopWatch, updateWatchPreferences, updateWatchSchedule, type SavedWatch, type Schedule,
@@ -38,7 +38,7 @@ export class Workbook extends DurableObject<Env> {
     return this.ctx.storage.sql.exec<{ value: number }>("SELECT 1 AS value").one().value;
   }
 
-  async ask(input: AskInput, preferences = this.aboutMe().preferences): Promise<{ answer: Answer; cached: boolean }> {
+  async ask(input: AnswerInput, preferences = this.aboutMe().preferences): Promise<{ answer: Answer; cached: boolean }> {
     const sql = this.ctx.storage.sql;
     sql.exec("CREATE TABLE IF NOT EXISTS answers (input TEXT PRIMARY KEY, answer TEXT NOT NULL)");
     const key = JSON.stringify(modelInput(input, preferences));
@@ -288,7 +288,7 @@ export default {
     } catch {
       return Response.json({ error: "Invalid JSON." }, { status: 400 });
     }
-    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences } = body ?? {};
+    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences, kind, count } = body ?? {};
     const cell = watchAddress(address);
     if (typeof workbook !== "string" || !/^[a-f0-9]{64}$/.test(workbook) ||
       ((pathname === "/watch" || managing) && !cell)) {
@@ -333,6 +333,16 @@ export default {
         return Response.json({ error: "Sheetdot could not stop the schedule. Try again." }, { status: 502 });
       }
     }
+    if (pathname === "/ask") {
+      if (kind === "list") {
+        if (typeof question !== "string" || !question.trim() ||
+          !Number.isInteger(count) || count < 1 || count > MAX_LIST_ROWS) {
+          return Response.json({ error: `Enter a list request and a whole number from 1 to ${MAX_LIST_ROWS}.` }, { status: 400 });
+        }
+      } else if (kind !== undefined && kind !== "check") {
+        return Response.json({ error: "Unknown answer type." }, { status: 400 });
+      }
+    }
     if (
       typeof question !== "string" || !question.trim() ||
       !Array.isArray(row) || !row.every(values => Array.isArray(values) && values.every(
@@ -344,7 +354,11 @@ export default {
 
     try {
       const input = { question: question.trim(), row };
-      if (pathname === "/ask") return Response.json(await target.ask(input, preferences));
+      if (pathname === "/ask") {
+        const answerInput: AnswerInput = kind === "list" ? { kind, request: input.question, count }
+          : kind === "check" ? { kind, ...input } : input;
+        return Response.json(await target.ask(answerInput, preferences));
+      }
 
       const timing = parseSchedule(schedule, timezone);
       if (!timing) {

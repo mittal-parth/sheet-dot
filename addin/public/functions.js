@@ -108,30 +108,85 @@ async function writeAnswerComment(address, answer, isCanceled) {
   }
 }
 
-CustomFunctions.associate("ASK", async (question, row, invocation) => {
+function plainAnswerLinks(value) {
+  if (typeof value !== "string") return value;
+  const text = value.trim();
+  return value.replace(/\[([^\]\n]+)\]\(<?(https?:\/\/(?:[^\s<>()]+|\([^\s()]*\))+)>?\)/gi,
+    (link, label, url) => text === link ? url : `${label} (${url})`);
+}
+
+function listDisplayText(value) {
+  if (typeof value !== "string") return value;
+  return value
+    .replace(/\s*\(\[[^\]\n]+\]\(<?https?:\/\/(?:[^\s<>()]+|\([^\s()]*\))+>?\)\)/gi, "")
+    .replace(/\[([^\]\n]+)\]\(<?https?:\/\/(?:[^\s<>()]+|\([^\s()]*\))+>?\)/gi, "$1")
+    .replace(/<?https?:\/\/(?:[^\s<>()]+|\([^\s()]*\))+>?/gi, "")
+    .replace(/\s*\(\s*\)/g, "")
+    .trim();
+}
+
+function listDisplayValues(values) {
+  const cleaned = values.map(row => row.map(listDisplayText));
+  const columns = cleaned[0].map((header, index) => ({ header, index }))
+    .filter(({ header }) => !/\b(?:sources?|citations?|links?|urls?|websites?)\b\s*$/i.test(header));
+  if (!columns.length) return [["No details to show"]];
+  return cleaned.map(row => columns.map(({ index }) => row[index]));
+}
+
+async function requestAnswer(input, isCanceled) {
+  const workbook = await getWorkbookId();
+  const preferences = await readWorkbookPreferences();
+  if (!isCanceled()) {
+    return requestSheetdot("/ask", { workbook, ...input, preferences });
+  }
+}
+
+function addAnswerComment(address, answer, isCanceled) {
+  return writeAnswerComment(address, answer, isCanceled).catch(error => {
+    console.warn("Could not add a Sheetdot source comment", error.code ?? error.name, error.debugInfo?.errorLocation);
+  });
+}
+
+async function showAnswer(input, invocation) {
   let canceled = false;
   invocation.onCanceled = () => { canceled = true; };
-  const working = setTimeout(() => {
+  const working = input.kind ? undefined : setTimeout(() => {
     if (!canceled) invocation.setResult("Working…");
   }, 300);
 
   try {
-    const workbook = await getWorkbookId();
-    const preferences = await readWorkbookPreferences();
-    if (canceled) return;
-    const result = await requestSheetdot("/ask", { workbook, question, row: row ?? [], preferences });
+    const result = await requestAnswer(input, () => canceled);
     clearTimeout(working);
     if (canceled) return;
-    invocation.setResult(result.answer.value);
-    await writeAnswerComment(invocation.address, result.answer, () => canceled).catch(error => {
-      console.warn("Could not add a Sheetdot source comment", error.code ?? error.name, error.debugInfo?.errorLocation);
-    });
+    invocation.setResult(plainAnswerLinks(result.answer.value));
+    await addAnswerComment(invocation.address, result.answer, () => canceled);
   } catch (error) {
     if (!canceled) invocation.setResult(new CustomFunctions.Error(
       CustomFunctions.ErrorCode.notAvailable, error.message
     ));
   } finally {
     clearTimeout(working);
+  }
+}
+
+CustomFunctions.associate("ASK", (question, row, invocation) =>
+  showAnswer({ question, row: row ?? [] }, invocation));
+
+CustomFunctions.associate("CHECK", (question, row, invocation) =>
+  showAnswer({ kind: "check", question, row: row ?? [] }, invocation));
+
+CustomFunctions.associate("LIST", async (question, count, invocation) => {
+  let canceled = false;
+  invocation.onCanceled = () => { canceled = true; };
+  const isCanceled = () => canceled;
+  try {
+    const result = await requestAnswer({ kind: "list", question, count }, isCanceled);
+    if (canceled) return;
+    const values = listDisplayValues(result.answer.value);
+    globalThis.queueListFormatting?.(invocation.address, values);
+    return values;
+  } catch (error) {
+    return new CustomFunctions.Error(CustomFunctions.ErrorCode.notAvailable, error.message);
   }
 });
 

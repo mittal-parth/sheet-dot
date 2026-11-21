@@ -134,11 +134,12 @@ OpenAI                                    Composio
 
 ### How each feature works
 
-- **`AI.ASK` / `AI.CHECK`**
+- **`AI.ASK`**
   - The function sends (workbook, question, row values) to `/ask`.
   - A cache hit returns at once. A miss shows ⏳ (a streaming function), then one model call returns a typed value plus a source string.
   - The source string becomes an Excel note.
-- **`AI.LIST`:** the same, but it returns a 2-D array that spills like any native array formula.
+- **`AI.CHECK`:** uses the Decisions API to evaluate a condition against the referenced range and About me preferences. Returns native Excel TRUE when the supplied evidence supports the condition, and FALSE when the evidence contradicts it or is insufficient. Checks that depend on web or Gmail results need those results as input.
+- **`AI.LIST`:** uses the Responses API with web search and returns a header row followed by up to the requested number of data rows (1–50). The result spills like any native array formula.
 - **`AI.WATCH`:**
   - First evaluation: it creates one Agents API automation (key = workbook + cell range + question), runs it once now, and adds a row to ⏰ Automations.
   - Each run starts a new session with the workbook's agent. The agent calls:
