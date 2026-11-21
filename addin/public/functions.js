@@ -70,8 +70,9 @@ CustomFunctions.associate("ASK", async (question, row, invocation) => {
 
   try {
     const workbook = await getWorkbookId();
+    const preferences = await readWorkbookPreferences();
     if (canceled) return;
-    const result = await requestSheetdot("/ask", { workbook, question, row: row ?? [] });
+    const result = await requestSheetdot("/ask", { workbook, question, row: row ?? [], preferences });
     clearTimeout(working);
     if (canceled) return;
     invocation.setResult(result.answer.value);
@@ -92,6 +93,7 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
   let timer;
   let displayed;
   let lastWatch;
+  let preferencesSynced = false;
   const controller = new AbortController();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   invocation.onCanceled = () => {
@@ -103,6 +105,10 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
   async function poll() {
     try {
       const workbook = await getWorkbookId();
+      if (!preferencesSynced) {
+        await syncWorkbookPreferences();
+        preferencesSynced = true;
+      }
       if (canceled) return;
       const watch = await requestSheetdot("/watch", {
         workbook, question, row, schedule, timezone, address: invocation.address,

@@ -1,8 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
-import { answerQuestion, type Answer, type AskInput } from "./ask";
+import { answerQuestion, modelInput, type Answer, type AskInput, type Preferences } from "./ask";
 import {
   checkRecurringWatch, checkWatch, parseSchedule, scheduleLabel, scheduleRecurringWatch, scheduleWatch,
-  stopWatch, updateWatchSchedule, type SavedWatch, type Schedule,
+  stopWatch, updateWatchPreferences, updateWatchSchedule, type SavedWatch, type Schedule,
 } from "./watch";
 
 type Env = {
@@ -15,8 +15,11 @@ type WatchEntry = {
   original: Schedule;
   schedule: Schedule;
   watch: SavedWatch;
+  aboutRevision?: number;
   removed?: boolean;
 };
+
+type AboutMe = { preferences: Preferences; revision: number };
 
 function watchAddress(address: unknown): string | undefined {
   if (typeof address !== "string" || address.length > 256) return;
@@ -35,10 +38,10 @@ export class Workbook extends DurableObject<Env> {
     return this.ctx.storage.sql.exec<{ value: number }>("SELECT 1 AS value").one().value;
   }
 
-  async ask(input: AskInput): Promise<{ answer: Answer; cached: boolean }> {
+  async ask(input: AskInput, preferences = this.aboutMe().preferences): Promise<{ answer: Answer; cached: boolean }> {
     const sql = this.ctx.storage.sql;
     sql.exec("CREATE TABLE IF NOT EXISTS answers (input TEXT PRIMARY KEY, answer TEXT NOT NULL)");
-    const key = JSON.stringify(input);
+    const key = JSON.stringify(modelInput(input, preferences));
     const saved = sql.exec<{ answer: string }>(
       "SELECT answer FROM answers WHERE input = ?", key
     ).toArray()[0];
@@ -49,7 +52,7 @@ export class Workbook extends DurableObject<Env> {
 
     const apiKey = this.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is missing from the Worker environment");
-    const request = answerQuestion(apiKey, input).then(answer => {
+    const request = answerQuestion(apiKey, input, preferences).then(answer => {
       sql.exec("INSERT INTO answers (input, answer) VALUES (?, ?)", key, JSON.stringify(answer));
       return answer;
     });
@@ -120,6 +123,47 @@ export class Workbook extends DurableObject<Env> {
     return key;
   }
 
+  private aboutMe(): AboutMe {
+    return this.ctx.storage.kv.get<AboutMe>("about-me") ?? { preferences: [], revision: 0 };
+  }
+
+  async saveAboutMe(preferences: Preferences) {
+    const saved = this.aboutMe();
+    if (JSON.stringify(saved.preferences) !== JSON.stringify(preferences)) {
+      this.ctx.storage.kv.put("about-me", { preferences, revision: saved.revision + 1 });
+    }
+    const entries = this.watchStorage().exec<{ address: string; entry: string }>(
+      "SELECT address, entry FROM watch_entries"
+    ).toArray();
+    const revision = this.aboutMe().revision;
+    const updates = entries
+      .filter(row => this.watchNeedsPreferences(JSON.parse(row.entry), revision))
+      .map(({ address }) => this.serializeWatch(address, async () => {
+        const entry = this.readWatch(address);
+        if (entry) await this.syncWatchPreferences(address, entry);
+      }));
+    const results = await Promise.allSettled(updates);
+    const failed = results.find(result => result.status === "rejected");
+    if (failed) throw failed.reason;
+  }
+
+  private watchNeedsPreferences(entry: WatchEntry, revision: number) {
+    if (entry.removed || (entry.aboutRevision ?? 0) === revision) return false;
+    const { watch } = entry;
+    return "recurring" in watch
+      ? watch.status !== "stopped"
+      : watch.status === "scheduled" && watch.runAt > Date.now() / 1000;
+  }
+
+  private async syncWatchPreferences(address: string, entry: WatchEntry) {
+    const about = this.aboutMe();
+    if (!this.watchNeedsPreferences(entry, about.revision)) return entry;
+    await updateWatchPreferences(this.watchKey(), entry.watch.id, entry.input, about.preferences);
+    const updated = { ...entry, aboutRevision: about.revision };
+    this.saveWatch(address, updated);
+    return updated;
+  }
+
   private async retireWatch(address: string, entry: WatchEntry, removed = false) {
     const watch = entry.watch.status === "scheduled" || ("recurring" in entry.watch && entry.watch.status === "complete")
       ? await stopWatch(this.watchKey(), entry.watch)
@@ -130,7 +174,11 @@ export class Workbook extends DurableObject<Env> {
 
   private async startWatch(input: AskInput, schedule: Schedule) {
     const key = this.watchKey();
-    return schedule.type === "once" ? scheduleWatch(key, input) : scheduleRecurringWatch(key, input, schedule);
+    const { preferences, revision } = this.aboutMe();
+    const watch = await (schedule.type === "once"
+      ? scheduleWatch(key, input, preferences)
+      : scheduleRecurringWatch(key, input, schedule, preferences));
+    return { watch, aboutRevision: revision };
   }
 
   listWatches() {
@@ -166,25 +214,28 @@ export class Workbook extends DurableObject<Env> {
       const schedule = parseSchedule(label, zone);
       if (!schedule) return "Use a supported schedule such as every 2 min or daily 8am.";
       if (JSON.stringify(schedule) === JSON.stringify(entry.schedule) && entry.watch.status !== "stopped") return;
-      let watch;
+      let updated;
       if ("recurring" in entry.watch && entry.watch.status !== "stopped" && schedule.type === "periodic" &&
         entry.schedule.type === "periodic" && entry.schedule.timezone === schedule.timezone) {
-        watch = await updateWatchSchedule(this.watchKey(), entry.watch, schedule);
+        const watch = await updateWatchSchedule(this.watchKey(), entry.watch, schedule);
+        updated = { ...entry, schedule, watch };
       } else {
         await this.retireWatch(address, entry);
-        watch = await this.startWatch(entry.input, schedule);
+        updated = { ...entry, schedule, ...await this.startWatch(entry.input, schedule) };
       }
-      this.saveWatch(address, { ...entry, schedule, watch });
+      this.saveWatch(address, updated);
+      await this.syncWatchPreferences(address, updated);
     });
   }
 
   watch(address: string, input: AskInput, original: Schedule) {
     return this.serializeWatch(address, async () => {
-      const entry = this.readWatch(address);
+      let entry = this.readWatch(address);
       const sameSchedule = entry && JSON.stringify(entry.original) === JSON.stringify(original);
       if (sameSchedule && (entry.removed || entry.watch.status === "stopped")) return entry.watch;
 
       if (sameSchedule && JSON.stringify(entry.input) === JSON.stringify(input)) {
+        entry = await this.syncWatchPreferences(address, entry);
         const { watch } = entry;
         if ("recurring" in watch) {
           if (Date.now() < watch.checkAfter) return watch;
@@ -200,9 +251,9 @@ export class Workbook extends DurableObject<Env> {
 
       const schedule = sameSchedule ? entry.schedule : original;
       if (entry && !entry.removed) await this.retireWatch(address, entry);
-      const watch = await this.startWatch(input, schedule);
-      this.saveWatch(address, { input, original, schedule, watch });
-      return watch;
+      const created = { input, original, schedule, ...await this.startWatch(input, schedule) };
+      this.saveWatch(address, created);
+      return (await this.syncWatchPreferences(address, created)).watch;
     });
   }
 }
@@ -215,7 +266,7 @@ export default {
       return Response.json({ sqlite: await workbook.ping() === 1 });
     }
 
-    if (!["/ask", "/watch", "/automations"].includes(pathname)) return new Response("Unknown route", { status: 404 });
+    if (!["/ask", "/watch", "/automations", "/about-me"].includes(pathname)) return new Response("Unknown route", { status: 404 });
     const stopping = pathname === "/watch" && request.method === "DELETE";
     const managing = pathname === "/automations" && ["PATCH", "DELETE"].includes(request.method);
     if (request.method !== "POST" && !stopping && !managing) {
@@ -237,13 +288,28 @@ export default {
     } catch {
       return Response.json({ error: "Invalid JSON." }, { status: 400 });
     }
-    const { workbook, question, row = [], schedule, address, timezone = "UTC" } = body ?? {};
+    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences } = body ?? {};
     const cell = watchAddress(address);
     if (typeof workbook !== "string" || !/^[a-f0-9]{64}$/.test(workbook) ||
       ((pathname === "/watch" || managing) && !cell)) {
       return Response.json({ error: "Expected a workbook ID and a worksheet cell for WATCH changes." }, { status: 400 });
     }
     const target = env.WORKBOOKS.getByName(workbook);
+    if ((pathname === "/about-me" || (pathname === "/ask" && preferences !== undefined)) &&
+      (!Array.isArray(preferences) || preferences.length > 100 ||
+        !preferences.every(pair => Array.isArray(pair) && pair.length === 2 &&
+          pair.every(value => typeof value === "string" && value.trim())))) {
+      return Response.json({ error: "Expected up to 100 About me preferences with a name and value." }, { status: 400 });
+    }
+    if (pathname === "/about-me") {
+      try {
+        await target.saveAboutMe(preferences);
+        return Response.json({ ok: true });
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : "Unknown preferences error");
+        return Response.json({ error: "Could not sync About me preferences to WATCH. Sheetdot will retry." }, { status: 502 });
+      }
+    }
     if (pathname === "/automations") {
       try {
         if (!managing) return Response.json({ schedules: await target.listWatches() });
@@ -278,7 +344,7 @@ export default {
 
     try {
       const input = { question: question.trim(), row };
-      if (pathname === "/ask") return Response.json(await target.ask(input));
+      if (pathname === "/ask") return Response.json(await target.ask(input, preferences));
 
       const timing = parseSchedule(schedule, timezone);
       if (!timing) {
