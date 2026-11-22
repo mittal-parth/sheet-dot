@@ -6,6 +6,37 @@
 
 Follow the numbers: the red path is an AI formula and the green path is a bill tracked from Gmail. The editable source is [docs/sheetdot-data-flow.excalidraw](docs/sheetdot-data-flow.excalidraw).
 
+## Try it now
+
+Sheetdot is already deployed at **https://sheet-dot.songguesser.workers.dev**. You need a browser and a free Microsoft account. No keys, no install, no code.
+
+**Get the add-in file**
+
+1. Open [addin/manifest.hosted.xml](addin/manifest.hosted.xml) on GitHub.
+2. Click the **Download raw file** button (the down-arrow icon above the file). Save `manifest.hosted.xml` somewhere you can find it.
+
+**Open Excel**
+
+3. Go to [excel.cloud.microsoft](https://excel.cloud.microsoft) in Chrome, Edge or Safari.
+4. Sign in with a Microsoft account. Any personal account works (Outlook.com, Hotmail, or one you create with your Gmail address). If you don't have one, choose **Create one!** on the sign-in page. Excel for the web is free.
+5. Choose **Blank workbook**.
+
+**Add Sheetdot to Excel**
+
+6. On the **Home** tab, click **Add-ins**, then **More Add-ins** at the bottom of the menu.
+7. In the window that opens, go to the **My Add-ins** tab and click **Upload My Add-in** (top right).
+8. Click **Browse**, pick `manifest.hosted.xml`, then click **Upload**.
+9. A **Sheetdot** group with an **Open Sheetdot** button appears on the right of the **Home** tab. Click it to open the Sheetdot pane.
+
+**Play**
+
+10. In the Sheetdot pane, click **Add demo sheets**. You get **Weekend Plans**, **Find a Flat** and **Family Bills**, plus a **Demo Guide** sheet that walks you through them.
+11. Or type a formula into any cell, for example `=AI.ASK("What is the capital of Karnataka?")`. You'll see ⏳ for a few seconds, then the answer.
+
+If the **Open Sheetdot** button is missing in another workbook, or after you clear your browser data, repeat steps 6–8. If it doesn't appear at all, refresh the page and try again.
+
+The hosted copy has no sign-in or limits and runs on the maintainers' keys. Use it to try things, not for data you care about.
+
 ## Three examples
 
 ### 1. Track household bills from Gmail
@@ -53,4 +84,4 @@ Preferences you write on the **🙋 About me** sheet are given to every answer.
 
 ## Run it yourself
 
-See [AGENTS.md](AGENTS.md) for setup from scratch: keys, local development, sideloading into Excel for the web, and deploying. The product plan and decisions are in [PLAN.md](PLAN.md).
+To run your own copy instead of the hosted one, see [AGENTS.md](AGENTS.md) for setup from scratch: keys, local development, sideloading into Excel for the web, and deploying. The product plan and decisions are in [PLAN.md](PLAN.md).

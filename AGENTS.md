@@ -16,17 +16,37 @@ Notes for anyone (human or coding agent) setting up or changing Sheetdot. Read [
 
 Model names live at the top of `backend/ask.ts`.
 
-## What you need
+## Just want to play with it?
 
-- Node 24 and npm.
-- A personal Microsoft account that can open Excel for the web.
-- An OpenAI API key with Agents API access (beta header `OpenAI-Beta: agents=v1`).
-- A Composio API key, plus a Gmail auth config that requests only `gmail.readonly`.
-- A Cloudflare account (free tier works) if you are deploying.
+You don't need keys, a clone or any setup. A copy is already running at `https://sheet-dot.songguesser.workers.dev`.
 
-## 1. Keys
+1. Follow [Load the add-in](#load-the-add-in-in-excel-for-the-web) with `addin/manifest.hosted.xml`. The README's [Try it now](README.md#try-it-now) has the same steps, written for non-developers.
+2. In the Sheetdot task pane, choose **Add demo sheets**. You get **Weekend Plans**, **Find a Flat** and **Family Bills**, plus a **Demo Guide** sheet that walks through them.
+3. Try the checks in [Check it works](#check-it-works), then write your own formulas on any table.
 
-Create `.env` in the repo root. It is gitignored; never commit it.
+The hosted copy runs on the maintainers' keys with no sign-in or limits. It's meant for trying things out, not for real data you care about. Set up your own copy (below) only if you want to change the code or use your own keys.
+
+## Set up your own copy
+
+Any person or coding agent can follow these steps in order. Steps marked **🧑 human** need a browser login or a dashboard, so an agent should stop there and ask the user to do them.
+
+### What you need
+
+| Need | Used for | Without it |
+|---|---|---|
+| Node 24 and npm | Running and deploying the backend | Nothing runs |
+| OpenAI API key with access to the models in `backend/ask.ts`, the Decisions API, and the Agents API beta (`OpenAI-Beta: agents=v1`) | Every formula | ASK and LIST need only the Responses API. CHECK fails without Decisions. WATCH fails without the Agents API. |
+| Composio API key and a Gmail auth config | Bill tracking | Formulas still work; **Track bills** fails |
+| Cloudflare account (free tier works) | Hosting | You can still run locally |
+| Personal Microsoft account | Excel for the web | Nothing to load the add-in into |
+
+Check model and API access first. It's the step most likely to block you.
+
+### Step 1. Get the keys (🧑 human)
+
+1. Create an OpenAI API key at platform.openai.com.
+2. In the Composio dashboard, create an API key. Then create a **Gmail** auth config that requests only the `https://www.googleapis.com/auth/gmail.readonly` scope, and copy its ID (it starts with `ac_`).
+3. Create `.env` in the repo root. It is gitignored; never commit it.
 
 ```
 OPENAI_API_KEY=...
@@ -34,49 +54,79 @@ COMPOSIO_API_KEY=...
 COMPOSIO_GMAIL_AUTH_CONFIG_ID=...
 ```
 
-Formulas work with only `OPENAI_API_KEY`. Bill tracking also needs both Composio values.
+### Step 2. Run locally
 
-## 2. Run locally
-
-Office add-ins must load over HTTPS, so install the Office dev certificate once:
+Office add-ins must load over HTTPS. Install the Office dev certificate once (it asks for your password to trust it):
 
 ```bash
 npx office-addin-dev-certs install
 ```
 
-Then start the backend. It serves both the API and the add-in files at `https://localhost:3000`:
+Start the backend. It serves the API and the add-in files at `https://localhost:3000`:
 
 ```bash
 cd backend && npm install && npm run dev
 ```
 
-Check it is up at `https://localhost:3000/health`.
+`https://localhost:3000/health` should return OK.
 
-## 3. Load the add-in in Excel for the web
+### Step 3. Deploy (optional)
 
-1. Open a workbook at excel.cloud.microsoft.
-2. Go to **Home → Add-ins → More add-ins → My Add-ins → Upload My Add-in**.
-3. Upload `addin/manifest.xml` for local development, or `addin/manifest.hosted.xml` for the deployed backend.
-4. Open the **Sheetdot** task pane from the ribbon.
-
-To check it works end to end:
-
-- Type `=AI.ASK("What is the capital of Karnataka?")` in a cell. You should see ⏳, then an answer with a purple source comment.
-- In the task pane, choose **Add demo sheets**. It adds **Weekend Plans**, **Find a Flat**, **Family Bills** and a **Demo Guide**. **Refresh demo data** pulls current rows from public sources into the first two.
-- On **Family Bills**, select the table, click **Track bills**, connect a Gmail account that has a real bill and its receipt, and pick **every 1 min**. Within a couple of minutes the table should gain the bill row, then mark it **Paid**.
-
-## 4. Deploy
+Log in once (🧑 human, opens a browser):
 
 ```bash
-cd backend
-npx wrangler login
-npx wrangler deploy
-npx wrangler secret put OPENAI_API_KEY
-npx wrangler secret put COMPOSIO_API_KEY
-npx wrangler secret put COMPOSIO_GMAIL_AUTH_CONFIG_ID
+cd backend && npx wrangler login
 ```
 
-If your Worker URL differs from `sheet-dot.songguesser.workers.dev`, replace that host everywhere in `addin/manifest.hosted.xml` before uploading it. Watch live logs with `npx wrangler tail`.
+Then deploy and add the keys as secrets:
+
+```bash
+cd backend && npx wrangler deploy
+```
+
+```bash
+cd backend && npx wrangler secret put OPENAI_API_KEY
+```
+
+```bash
+cd backend && npx wrangler secret put COMPOSIO_API_KEY
+```
+
+```bash
+cd backend && npx wrangler secret put COMPOSIO_GMAIL_AUTH_CONFIG_ID
+```
+
+`wrangler deploy` prints your URL, for example `https://sheet-dot.<your-subdomain>.workers.dev`. Make a manifest for it from the local one, with a new add-in ID so it doesn't clash with ours:
+
+```bash
+sed -e "s#https://localhost:3000#https://sheet-dot.YOUR-SUBDOMAIN.workers.dev#g" -e "s#<Id>[^<]*</Id>#<Id>$(uuidgen | tr A-Z a-z)</Id>#" addin/manifest.xml > addin/manifest.mine.xml
+```
+
+Watch live logs with `npx wrangler tail`.
+
+### Load the add-in in Excel for the web
+
+All of this is 🧑 human: it needs a browser and a Microsoft sign-in. An agent should give the user these steps and the path of the manifest to upload.
+
+1. Go to [excel.cloud.microsoft](https://excel.cloud.microsoft) in Chrome, Edge or Safari.
+2. Sign in with a personal Microsoft account (Outlook.com, Hotmail, or one created with any email address via **Create one!**). Excel for the web is free.
+3. Choose **Blank workbook**.
+4. On the **Home** tab, click **Add-ins**, then **More Add-ins**.
+5. Go to the **My Add-ins** tab and click **Upload My Add-in**.
+6. Click **Browse** and pick the manifest, then **Upload**:
+   - `addin/manifest.hosted.xml` for the hosted copy,
+   - `addin/manifest.xml` while `npm run dev` is running locally,
+   - `addin/manifest.mine.xml` for your own deployment.
+7. Click **Open Sheetdot** in the **Sheetdot** group at the right end of the **Home** tab.
+
+An uploaded add-in may need uploading again in another workbook or after clearing browser data. If the button doesn't appear, refresh the page and upload again. For the local manifest, the browser must trust `https://localhost:3000`. If the pane is blank, open that URL in a tab once to check.
+
+### Check it works
+
+- Type `=AI.ASK("What is the capital of Karnataka?")` in a cell. You should see ⏳, then an answer with a purple source comment.
+- Type `=AI.CHECK("Bengaluru is in Karnataka")`. You should get `TRUE`. This confirms Decisions API access.
+- Type `=AI.WATCH("What time is it in Tokyo?", A1, "every 1 min")`. A row should appear on the **⏰ Automations** sheet. This confirms Agents API access.
+- In the task pane, choose **Add demo sheets**. On **Family Bills**, select the table, click **Track bills**, connect a Gmail account that has a real bill and its receipt (🧑 human), and pick **every 1 min**. Within a couple of minutes the bill row should appear, then turn **Paid**.
 
 ## Checks
 
