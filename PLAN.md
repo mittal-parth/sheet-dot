@@ -1,6 +1,6 @@
 # Plan: Sheetdot, Excel as the control plane for personal agents
 
-> Status: **product settled, build not started.** Clickable visual spec: [docs/mockup.html](docs/mockup.html).
+> [Clickable product mockup](docs/mockup.html)
 
 ## Context
 
@@ -30,11 +30,12 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
   - **Family accounts:** EMIs, premiums, subscriptions, checked against bank and bill alert emails.
   - **Flat hunt:** the second act.
   - Positioned as a general agent control plane; these are just the demos. No user interviews.
-- **Formulas:** `AI.ASK`, `AI.CHECK`, `AI.LIST`, `AI.WATCH`, plus `?` headers. Nothing else.
+- **Formulas:** `AI.ASK`, `AI.CHECK`, `AI.LIST`, and `AI.WATCH`.
+- **Column suggestions:** Opt in once per workbook from the Sheetdot task pane. Selecting a populated Excel Table or a contiguous range with headers shows up to two grey suggestions in empty cells to its right. Tick a suggestion's checkbox to append a working column.
 - **The workbook is the agent.** No named bots. One agent per workbook, configured by the 🙋 About me sheet.
 - **The agent picks its own sources,** within what's connected.
 - **What the agent sees in v0:** the whole sheet the formula is on, plus About me.
-- **AI answers are saved.** They only change on **Refresh**, when something in that row changes, or when a WATCH fires. Excel's own recalculation never re-asks the AI.
+- **AI answers are saved.** Unchanged inputs reuse the saved answer. WATCH can update its result on a schedule.
 - **Schedules in plain words** ("daily 8am", "every 1 min") in both `AI.WATCH` and ⏰ Automations. Editing the Schedule cell reschedules the job.
 - **A WATCH can add rows,** but only to its own table.
 - **Real actions only, approved by a human.** The agent proposes an action in the row (amber cell + native checkbox). Ticking the box runs it for real.
@@ -71,8 +72,8 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 | `=AI.CHECK(condition, row)` | TRUE/FALSE, which drives Excel's own conditional formatting |
 | `=AI.LIST(request, n)` | Fills in a table out of nothing |
 | `=AI.WATCH(question, row, "daily 8am")` | A standing order. The formula is the schedule. |
-| `? Header` + **✦ Fill column** | Writes `AI.ASK`/`AI.CHECK` into every row |
-| Ribbon: Fill column · Refresh · Keep fresh · Connect | The only buttons |
+| Grey suggestions beside a table | Tick one to add a column with Excel or AI formulas |
+| Sheetdot task pane | Enable column suggestions and manage schedules |
 | Excel **note** on a cell | Where the answer came from, and when |
 | ⏰ Automations sheet | Every WATCH. Edit Schedule to change it, delete the row to stop it. |
 | 🙋 About me sheet | The agent's memory and instructions, plus the Connections table |
@@ -83,6 +84,7 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 |---|---|
 | ⏳ | Working |
 | Excel note marker | Filled by an agent (hover to see the source) |
+| Grey header, description and ☐ beside the table | Suggested column. Tick to add it and calculate the rows. |
 | **Yellow fill** | Changed since you last looked. Clears when you select it. |
 | **Amber cell + ☐** | The agent wants to do something. Tick to approve. |
 | **Green** | Done ("✓ email sent 9:02") |
@@ -91,15 +93,31 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 
 ## Demo script (3 minutes)
 
-1. Open "Family accounts". Click `? Paid this month`, then Fill. Cells show `🔌 Needs Gmail`. Connect, Allow. The cells fill from real bank alert emails, each with a note.
-2. Fill `? Needs attention`. The LIC and BESCOM rows turn red through native conditional formatting.
-3. Press **Keep fresh**. A row appears in ⏰ Automations, set to every 1 min.
+1. Open "Family accounts" and enable column suggestions. Select the table and accept a suggested column. Connect Gmail for the payment-check formulas once that integration is available.
+2. Use a TRUE/FALSE check to drive native conditional formatting for rows that need attention.
+3. Enter an `AI.WATCH` formula with `"every 1 min"`. Its schedule appears in ⏰ Automations.
 4. **Close the tab.** Wait for a real run. Reopen and show:
    - yellow cells: BESCOM is now paid, so its row is no longer red;
    - a **new Spotify row**;
    - amber **"📧 Email Ramesh (LIC) for the premium link ☐"**.
 5. Tick it. The email really arrives on a phone on stage. The cell turns green.
-6. **Second act, Flat hunt:** `=AI.LIST(...)` spills listings, then `? Commute to office at 9am`.
+6. **Second act, Flat hunt:** `=AI.LIST(...)` spills listings. Select the results to see suggested columns, then accept one from the grid.
+
+### Try column suggestions locally
+
+Open the workbook through `excel.cloud.microsoft` in Arc with the local Sheetdot add-in loaded. Paste this sample into **A1** on a blank sheet.
+
+```tsv
+Listing	Monthly rent	Deposit	Bedrooms
+Maple Court	1500	2200	2
+Oak Terrace	1850	900	3
+Birch Place	1300	1500	1
+```
+
+1. Open the Sheetdot task pane and enable **Suggest columns in this workbook**.
+2. Select **B2**. Grey suggestions should appear to the right, starting at **E1**. Exact names vary. In the live test, Sheetdot proposed **Rent per bedroom** and **Upfront cost**.
+3. Before accepting, select **A10** and then **B2** again. The grey previews should clear and then return.
+4. Tick a suggestion's checkbox. The chosen column becomes **E**, even if it was the second preview. If you picked **Upfront cost**, Maple Court should show `3,700`. If you picked **Rent per bedroom**, it should show `750`.
 
 ## Architecture
 
@@ -107,13 +125,14 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 Excel for the web
   └─ Sheetdot add-in (Office.js, shared runtime, loads on document open)
        • custom functions: AI.ASK / AI.CHECK / AI.LIST / AI.WATCH (streaming)
-       • ribbon: Fill column, Refresh, Keep fresh, Connect
+       • column suggestions appear in the grid after workbook opt-in
        • on open: pulls patches (new rows, actions, changed marks) and applies them with Excel.run
        • watches checkbox changes → POST /actions/:id/approve
        │  HTTPS (polls every few seconds while open; no websockets)
        ▼
 Sheetdot backend: Cloudflare Worker + one Durable Object per workbook (SQLite inside)
        • /ask      cache-first; on miss → model call with web search + Composio MCP (read-only)
+       • /suggest-columns   propose columns from headers, sample rows and About me preferences
        • /watch    create / update / delete Agents API automations
        • /webhook  Agents API events → answer function calls from the mirror
        • /sync     add-in pushes the watched ranges + About me; backend keeps the copy
@@ -134,6 +153,11 @@ OpenAI                                    Composio
 
 ### How each feature works
 
+- **Column suggestions**
+  - Workbook opt-in allows Sheetdot to send the headers, up to five sample rows, and About me preferences to OpenAI. Selecting the table generates suggestions automatically.
+  - A suggestion contains a short header, a description, and an accept checkbox. Previews stay outside the table and use only empty space. Existing data stays in place.
+  - Acceptance appends the next real column and fills every data row. Exact calculations use native Excel formulas. Interpretation and public-web lookups use `AI.CHECK` or `AI.ASK`. Suggestions use available inputs and sources.
+  - Unused previews clear on leaving the table and reappear from the session cache when you return. When you accept the second suggestion first, the remaining preview moves to the right of the new column.
 - **`AI.ASK`**
   - The function sends (workbook, question, row values) to `/ask`.
   - A cache hit returns at once. A miss shows ⏳ (a streaming function), then one model call returns a typed value plus a source string.
@@ -165,8 +189,8 @@ sheetdot/
   docs/mockup.html
   addin/      Office add-in (Yeoman "Excel Custom Functions, shared runtime", TypeScript)
     src/functions/   AI.* custom functions
-    src/commands/    ribbon handlers
-    src/core/        pure logic (patch apply, colour rules, header parsing): no Office.js imports
+    public/suggestions.js   in-grid column previews and acceptance
+    src/core/        pure logic (patch apply, colour rules): no Office.js imports
     src/excel/       thin Excel.run adapter
   backend/    Cloudflare Worker + Durable Object (TypeScript, Hono)
     src/schedule.ts  plain words → cron
@@ -199,13 +223,14 @@ sheetdot/
 
 - Durable Object per workbook: cache, mirror, automations, patches, actions, last-seen values.
 - `/ask` with typed outputs (string / number / boolean / 2-D array) plus a source string.
+- `/suggest-columns` with validated column recipes for a small worksheet sample.
 - Plain words → cron. Automation create, update and delete. Webhook handler with signature check.
 - Composio connect link, MCP config, action runner. `/pay/:id` page.
 - `/debug/:workbook`.
 
 ### 3. Add-in core
 
-- The four functions, `?` header Fill, Refresh, Keep fresh, Connect.
+- The four functions, in-grid column suggestions, and Connect.
 - Notes, colour language, checkbox → approve, yellow clears on select.
 - The Automations sheet kept in sync both ways: edit Schedule → reschedule; delete row → delete automation.
 - About me sheet sync, including the Connections table.
@@ -226,12 +251,12 @@ The aim: **I can check almost everything myself, without you clicking in Excel.*
 
 | # | What | How | Who runs it |
 |---|---|---|---|
-| V1 | Pure logic | Vitest unit tests: schedule parsing, cache keys, patch merge, the action state machine (proposed → approved → done / cleared), header parsing, colour rules | Me, on every change |
+| V1 | Pure logic | Vitest unit tests: schedule parsing, cache keys, patch merge, the action state machine (proposed → approved → done / cleared), suggestion recipes, colour rules | Me, on every change |
 | V2 | Add-in against a fake Excel | Microsoft's `office-addin-mock` for the `Excel.run` adapter: assert that notes, fills, conditional formats and checkboxes are requested correctly | Me |
 | V3 | Real OpenAI + Composio | `scripts/verify-agents.ts`: one ASK with web search, one Gmail read, one automation fired by webhook → patch stored. Uses real keys. | Me (needs your keys) |
-| V4 | Full flow with no Excel | `scripts/fake-workbook.ts` plays the add-in: register a workbook → sync rows → ASK → Keep fresh → wait for a real 1-minute run → pull patches → approve an action → check the email was sent. It prints a pass/fail checklist. | Me |
+| V4 | Full flow with no Excel | `scripts/fake-workbook.ts` plays the add-in: register a workbook → sync rows → ASK → create a one-minute WATCH → wait for a real run → pull patches → approve an action → check the email was sent. It prints a pass/fail checklist. | Me |
 | V5 | Backend state | `GET /debug/:workbook` shows the cache, automations (with next run), runs, patches, actions and last-seen values. Every script asserts against it. | Me |
-| V6 | Real Excel | A 10-step checklist matching the demo script, run in excel.com. If you sign in to excel.com once in the Browser pane, I can try driving it myself. | You (about 10 min), or me in your signed-in Browser pane |
+| V6 | Real Excel | Follow the demo script in Excel for the web. Check workbook opt-in, preview cleanup and return, and acceptance of the second suggestion first on both a plain range and a native Excel Table. | Either of us in a signed-in Excel session |
 | V7 | Demo rehearsal | Fresh browser, sideload, template, demo script with the tab closed during the 1-minute run. Twice in a row without a failure. | Both |
 
 Definition of done for the hackathon: V1–V5 green, V6 passes in real Excel, V7 passes twice.
@@ -261,7 +286,7 @@ Already available on this machine: Node 24, npm 12. Installed on first use, no a
 | No Agents API access on our key | Ask the organisers. WATCH can't be faked; this blocks the core feature. |
 | Notes, checkbox or conditional-format APIs missing on Excel web | Swap in comments, a TRUE/FALSE dropdown, or a fill colour set by us |
 | Indian bank alert formats vary | Demo with the banks in your demo Gmail; the model reads free text, so there are no parsers to write |
-| A slow model on stage | Pre-warm the cache for the first fill. Leave the WATCH run live, because that's the proof. |
+| A slow model on stage | Open the demo table once to generate suggestions, then use the cached suggestions during the demo. Run WATCH live. |
 | An email sent to the wrong person | Actions only send to addresses in About me or the original thread. The amber preview shows the recipient. |
 
 ## Later (not for the hackathon)

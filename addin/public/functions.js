@@ -169,13 +169,13 @@ async function showAnswer(input, invocation) {
   }
 }
 
-CustomFunctions.associate("ASK", (question, row, invocation) =>
-  showAnswer({ question, row: row ?? [] }, invocation));
+CustomFunctions.associate("ASK", (question, row, refreshKey, invocation) =>
+  showAnswer({ question, row: row ?? [] }, invocation ?? refreshKey));
 
-CustomFunctions.associate("CHECK", (question, row, invocation) =>
-  showAnswer({ kind: "check", question, row: row ?? [] }, invocation));
+CustomFunctions.associate("CHECK", (question, row, refreshKey, invocation) =>
+  showAnswer({ kind: "check", question, row: row ?? [] }, invocation ?? refreshKey));
 
-CustomFunctions.associate("LIST", async (question, count, invocation) => {
+CustomFunctions.associate("LIST", async (question, count, refreshKey, invocation = refreshKey) => {
   let canceled = false;
   invocation.onCanceled = () => { canceled = true; };
   const isCanceled = () => canceled;
@@ -190,7 +190,8 @@ CustomFunctions.associate("LIST", async (question, count, invocation) => {
   }
 });
 
-CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
+CustomFunctions.associate("WATCH", (question, row, schedule, logical, cellKey, invocation = cellKey ?? logical) => {
+  logical = logical === true;
   let canceled = false;
   let timer;
   let displayed;
@@ -213,7 +214,7 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
       }
       if (canceled) return;
       const watch = await requestSheetdot("/watch", {
-        workbook, question, row, schedule, timezone, address: invocation.address,
+        workbook, question, row, schedule, timezone, logical, address: invocation.address,
       }, "POST", controller.signal);
       if (canceled) return;
       const revision = JSON.stringify([watch.id, watch.status, watch.lastRunAt]);
@@ -224,7 +225,14 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
       if (watch.status === "failed") throw new Error(watch.error);
       const value = watch.value ?? (watch.status === "stopped" ? "Stopped" : "Scheduled");
       if (value !== displayed) {
-        invocation.setResult(value);
+        if (logical && watch.value !== undefined) {
+          const text = watch.value.toUpperCase();
+          invocation.setResult(text === "TRUE" || text === "FALSE"
+            ? text === "TRUE"
+            : new CustomFunctions.Error(CustomFunctions.ErrorCode.notAvailable, "WATCH did not return TRUE or FALSE."));
+        } else {
+          invocation.setResult(value);
+        }
         displayed = value;
       }
       timer = setTimeout(poll, 10_000);
