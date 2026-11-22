@@ -8,6 +8,10 @@
 
 In India, and especially among Indian dads, people love their good old Excel. From quick calculations to monthly expenses, flights, job hunts and life savings, there is an Excel sheet for everything. It has long been the richest source of personal context.
 
+Excel gives Dad a familiar way to make a tracker for whatever the family needs. He can set up the columns his way, do the math with formulas and update the same sheet month after month.
+
+Excel is multiplayer by design. Share a workbook and family members can open and edit it together. Everyone can see the latest bill amounts, due dates and payment status in the same place.
+
 Sheetdot brings always-running personal agents right inside Excel, connected to your favourite tools. There is no chat. Everything happens through Excel formulas, and they keep running even when Excel is closed. Imagine OpenAI Dots, but used natively through Excel.
 
 ## Data flow diagram
@@ -96,7 +100,9 @@ Select the table and Sheetdot also suggests columns in grey to the right, such a
 =AI.WATCH("Will it rain on Saturday at this venue?", A2:C2, "daily 8am")
 ```
 
-The formula creates an OpenAI-hosted agent that re-checks every morning. The **⏰ Automations** sheet lists it; edit its *Schedule* cell to change when it runs, or delete the row to stop it.
+The formula creates an OpenAI-hosted agent that re-checks every morning, even when Excel is closed. Sheetdot picks up the latest result when you reopen the workbook. Changed cells are highlighted in yellow. On the **⏰ Automations** sheet, edit the *Schedule* cell to change when the agent runs, or delete its row to stop it.
+
+Gmail bill tracking runs in the cloud too. A scheduled check can add a bill when it arrives and mark the same row **Paid** when the receipt follows.
 
 ## The formulas
 
@@ -106,6 +112,8 @@ The formula creates an OpenAI-hosted agent that re-checks every morning. The **�
 | `=AI.CHECK(condition, row)` | TRUE or FALSE |
 | `=AI.LIST(request, n)` | A new table of up to *n* rows, spilled into the sheet |
 | `=AI.WATCH(question, row, schedule)` | `AI.ASK`, re-run on a schedule like `"daily 8am"` or `"every 1 min"` |
+
+`AI.ASK` and `AI.CHECK` can use the cells in a row as context. Fill the formula down to apply the same question or condition to every row. `AI.LIST` starts from a request and fills neighbouring cells with the resulting table, for example `=AI.LIST("List sample flats with monthly rent, deposit, and bedrooms", 3)`.
 
 Preferences you write on the **🙋 About me** sheet are given to every answer.
 
