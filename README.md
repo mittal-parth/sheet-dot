@@ -2,6 +2,8 @@
 
 **Excel as the control plane for always-on personal agents.**
 
+[Watch the Sheetdot demo on YouTube](https://youtu.be/O-qodE6qwMw)
+
 ## Brief
 
 In India, and especially among Indian dads, people love their good old Excel. From quick calculations to monthly expenses, flights, job hunts and life savings, there is an Excel sheet for everything. It has long been the richest source of personal context.
