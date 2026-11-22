@@ -94,12 +94,12 @@ dt { font-weight: 650; }
 dd { margin: var(--space-1) 0 0; color: var(--muted); }
 code, pre { font-family: var(--font-code); font-size: 12px; }
 code { color: var(--green-pressed); }
-.about-me {
+.pane-section {
   margin-top: var(--space-6);
   padding-top: var(--space-4);
   border-top: 1px solid var(--rule);
 }
-.about-me h2 { margin: 0; font-size: 16px; }
+.pane-section h2 { margin: 0; font-size: 16px; }
 .about-me p:not(.feedback) { margin: var(--space-1) 0 var(--space-3); color: var(--muted); }
 .diagnostics {
   margin-top: var(--space-6);
@@ -115,6 +115,14 @@ summary:hover, summary:active, details[open] > summary { color: var(--ink); }
 .diagnostics-body { padding: 0 var(--space-1) var(--space-4); }
 .diagnostics-body p { margin: 0 0 var(--space-2); color: var(--muted); }
 .formulas { list-style: none; margin: 0 0 var(--space-3); padding: 0; }
+.suggestion-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  font-weight: 650;
+}
+.suggestion-toggle input { accent-color: var(--green); }
 .diagnostic-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 pre {
   margin: var(--space-3) 0 0;

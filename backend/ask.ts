@@ -1,5 +1,5 @@
 export const MODEL = "gpt-6-luna";
-const RESPONSES_MODEL = "gpt-6.1-terra";
+export const RESPONSES_MODEL = "gpt-6.1-terra";
 
 export type AskInput = {
   question: string;

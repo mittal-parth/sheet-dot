@@ -11,30 +11,41 @@
   <script defer src="functions.js"></script>
   <script defer src="about-me.js"></script>
   <script defer src="automations.js"></script>
+  <script defer src="suggestions.js"></script>
   <script defer src="probe.js"></script>
 </head>
 <body>
   <main>
-    <h1>Automations</h1>
-    <p class="intro">Manage the WATCH schedules in this workbook.</p>
-    <button class="primary" id="open-automations" type="button" disabled>
-      <span>Open Automations</span><span aria-hidden="true">→</span>
-    </button>
-    <p class="feedback" id="automations-status" role="status"></p>
+    <h1>Sheetdot</h1>
+    <label class="suggestion-toggle">
+      <input id="enable-suggestions" type="checkbox" disabled>
+      Suggest columns in this workbook
+    </label>
+    <p class="intro">Select a table or range with headers to see suggestions beside it. Sheetdot sends the headers, up to five sample rows, and About me preferences to OpenAI.</p>
+    <p class="feedback" id="suggestion-status" role="status"></p>
 
-    <dl class="instructions">
-      <div>
-        <dt>Reschedule a WATCH</dt>
-        <dd>Edit its Schedule cell. Try <code>every 15 min</code> or <code>daily 8am</code>.</dd>
-      </div>
-      <div>
-        <dt>Stop a schedule</dt>
-        <dd>Delete its table row, or select the original formula cell and stop it here.</dd>
-      </div>
-    </dl>
-    <button class="secondary" id="stop-watch" type="button" disabled>Stop selected WATCH</button>
+    <section class="pane-section" aria-labelledby="automations-title">
+      <h2 id="automations-title">Automations</h2>
+      <p class="intro">Manage the WATCH schedules in this workbook.</p>
+      <button class="primary" id="open-automations" type="button" disabled>
+        <span>Open Automations</span><span aria-hidden="true">→</span>
+      </button>
+      <p class="feedback" id="automations-status" role="status"></p>
 
-    <section class="about-me" aria-labelledby="about-me-title">
+      <dl class="instructions">
+        <div>
+          <dt>Reschedule a WATCH</dt>
+          <dd>Edit its Schedule cell. Try <code>every 15 min</code> or <code>daily 8am</code>.</dd>
+        </div>
+        <div>
+          <dt>Stop a schedule</dt>
+          <dd>Delete its table row, or select the original formula cell and stop it here.</dd>
+        </div>
+      </dl>
+      <button class="secondary" id="stop-watch" type="button" disabled>Stop selected WATCH</button>
+    </section>
+
+    <section class="pane-section about-me" aria-labelledby="about-me-title">
       <h2 id="about-me-title">About me</h2>
       <p>Add preferences for ASK and WATCH in this workbook. Enter a name and value on each row.</p>
       <button class="secondary" id="open-about-me" type="button" disabled>Open About me</button>

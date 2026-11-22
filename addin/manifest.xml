@@ -4,7 +4,7 @@
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>b31974a2-d119-4d25-8ad7-6fb78b473041</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.0.2.0</Version>
   <ProviderName>Sheetdot</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Sheetdot" />
@@ -74,7 +74,6 @@
                     <bt:Image size="80" resid="Icon.80x80" />
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>ButtonId1</TaskpaneId>
                     <SourceLocation resid="Taskpane.Url" />
                   </Action>
                 </Control>
@@ -98,13 +97,13 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Functions.Namespace" DefaultValue="AI" />
-        <bt:String id="GetStarted.Title" DefaultValue="Get started with your sample add-in!" />
+        <bt:String id="GetStarted.Title" DefaultValue="Get started with Sheetdot" />
         <bt:String id="CommandsGroup.Label" DefaultValue="Sheetdot" />
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Check compatibility" />
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Open Sheetdot" />
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Your sample add-in loaded successfully. Go to the HOME tab and click the 'Check compatibility' button to get started." />
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show a Task Pane" />
+        <bt:String id="GetStarted.Description" DefaultValue="Open Sheetdot on the Home tab to enable column suggestions and manage schedules." />
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open Sheetdot commands and workbook settings." />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
