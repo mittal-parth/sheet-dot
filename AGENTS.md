@@ -44,14 +44,14 @@ Check model and API access first. It's the step most likely to block you.
 
 ### Step 1. Get the keys (🧑 human)
 
-1. Create an OpenAI API key at platform.openai.com.
-2. In the Composio dashboard, create an API key. Then create a **Gmail** auth config that requests only the `https://www.googleapis.com/auth/gmail.readonly` scope, and copy its ID (it starts with `ac_`).
-3. Create `.env` in the repo root. It is gitignored; never commit it.
+Follow [docs/env-setup.md](docs/env-setup.md) for click-by-click steps with links to each provider's official docs. In short:
 
-```
-OPENAI_API_KEY=...
-COMPOSIO_API_KEY=...
-COMPOSIO_GMAIL_AUTH_CONFIG_ID=...
+1. Create an OpenAI API key at platform.openai.com/api-keys.
+2. In the Composio dashboard, copy the project API key. Then create a **Gmail** auth config that requests only the `https://www.googleapis.com/auth/gmail.readonly` scope, and copy its ID (it usually starts with `ac_`).
+3. Copy the example file in the repo root and fill in the three values. `.env` is gitignored; never commit it.
+
+```bash
+cp .env.example .env
 ```
 
 ### Step 2. Run locally
