@@ -55,7 +55,7 @@ Sheetdot is already deployed at **https://sheet-dot.songguesser.workers.dev**. Y
 
 **Play**
 
-10. In the Sheetdot pane, click **Open live demo** to load starter inputs. The [recording walkthrough](docs/live-demo.md) uses two prepared Excel web workbooks to show Gmail, live trades, and a train search that writes results into a table.
+10. In the Sheetdot pane, click **Open live demo** to load starter inputs. The [recording walkthrough](docs/live-demo.md) uses one prepared Excel web workbook to show Gmail, live trades, and a train search that writes results into a table.
 11. Or type a formula into any cell, for example `=AI.ASK("What is the capital of Karnataka?")`. You'll see ⏳ for a few seconds, then the answer.
 
 If the **Open Sheetdot** button is missing in another workbook, or after you clear your browser data, repeat steps 6–8. If it doesn't appear at all, refresh the page and try again.

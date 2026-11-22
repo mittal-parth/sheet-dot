@@ -1,17 +1,16 @@
 # Sheetdot live demo
 
-Open two Excel for the web tabs. Start in **Sheetdot Gmail Demo**, then go to **Book 10 → Live Demo India** while Gmail checks for the receipt. Keep the workbook with the bill open so Excel can display the result.
+Open **Book 10** in Excel for the web. Start on **Gmail Bill Test**, then switch to **Live Demo India** while Gmail checks for the receipt.
 
 ## 1. Set up Gmail and track one bill
 
 Before recording, pick a real bill and its matching payment receipt. In Gmail, create the label `sheetdot-demo` and a filter that applies it to a distinctive subject phrase such as `Sheetdot demo`. Forward the bill with that phrase. Keep the receipt out of the label until the recording.
 
-1. In **Sheetdot Gmail Demo**, use **B4:D4** for the actual merchant, amount, and due date. Replace the preset merchant if needed. Use the merchant name on the bill. Leave **E4** empty.
-2. Open Sheetdot and click **Connect Gmail**. This new workbook needs its own connection. On subsequent visits, reuse that connection while it remains active.
-3. Select **B4**. Set the Gmail label to `sheetdot-demo` and the schedule to `every 1 min`, then click **Track bills in selected table**.
-4. Show **No payment evidence found**, then forward the real receipt so the filter labels it. Switch to **Book 10**.
+1. On **Gmail Bill Test**, enter the real merchant, amount, and due date in the existing bill table. Use the merchant name from the bill and leave its payment status empty.
+2. Open Sheetdot and reuse the existing Gmail connection in Book 10. If the table is already being tracked on the right label, use that schedule. To start tracking, select a cell in the bill table, set the Gmail label to `sheetdot-demo` and the schedule to `every 1 min`, and click **Track bills in selected table**.
+3. Show **No payment evidence found**, then forward the real receipt so the filter labels it. Switch to **Live Demo India**.
 
-If Sheetdot is missing from the new workbook, use **Home → Add-ins → More Add-ins → My Add-ins → Upload My Add-in**, then select [the hosted manifest](../addin/manifest.hosted.xml). If Excel does not offer an upload option or you are ready to record, use **Gmail Bill Test** in **Book 10**. It uses Book 10's existing connection. Select the existing bill table and use a fresh bill and receipt for the reveal.
+If the **Open Sheetdot** button is missing and formulas show `#NAME?`, use the browser profile where Sheetdot was uploaded. To register it again, use **Home → Add-ins → More Add-ins → My Add-ins → Upload My Add-in** and select [the hosted manifest](../addin/manifest.hosted.xml). Confirm that typing `=AI.` shows the available formulas before recording.
 
 ## 2. Start the trip research
 
@@ -35,10 +34,10 @@ In **D4**, type:
 
 Show Apple’s result, then drag the fill handle down through **D8**. Each row uses its own ticker. The date identifies the trading session on a weekend.
 
-To show a quick TRUE or FALSE check, type in **E4**:
+To flag stocks that closed at $300 or above, type this in **E4** after ASK returns a price. You can fill it down through **E8**:
 
 ```excel
-=AI.CHECK("The ticker in this cell is listed on Nasdaq.",C4)
+=AI.CHECK("The closing price in this cell is at least 300 USD. Ignore the trading date.",D4)
 ```
 
 ## 4. List live trades, then watch the same market
@@ -61,6 +60,6 @@ Open **Automations**, point to **Live Demo India!B12** and **Last run**, and ret
 
 Return to the trip table. The WATCH researched more than one station and added rows with train numbers, times, and sources. This is the point to show that the job kept working while you moved on, then wrote its results into the existing Excel table.
 
-Switch back to **Sheetdot Gmail Demo**. Show the receipt in Gmail, then **Paid** in **E4** and the matching receipt in the cell’s comment. Allow another check if the receipt arrived just after a run. Stop the demo schedules in **Automations** once you finish recording.
+Switch back to **Gmail Bill Test**. Show the receipt in Gmail, then **Paid** on the tracked row and the matching receipt in the cell’s comment. Allow another check if the receipt arrived just after a run. Stop the demo schedules in **Automations** once you finish recording.
 
 Sources: [Nasdaq](https://www.nasdaq.com/market-activity/stocks), [Coinbase Exchange trades](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-trades), and [Indian Railways](https://www.indianrail.gov.in/mail_express_trn_list.html).
