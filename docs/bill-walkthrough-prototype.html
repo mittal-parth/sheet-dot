@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheetdot · Family Accounts</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f2f5f1; color: #202a23; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 920px; margin: auto; padding: 36px 20px; }
+  h1 { margin: 0; font-size: 32px; letter-spacing: -.035em; }
+  p { margin: 6px 0 0; }
+  .muted { color: #516057; }
+  .workbook { margin: 24px 0 0; background: #fff; border: 1px solid #cfd9d1; border-radius: 12px; overflow: hidden; }
+  .bar { padding: 13px 16px; background: #e5eee7; }
+  .grid { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  th, td { padding: 10px 14px; border: 1px solid #e1e7e1; text-align: left; }
+  thead tr:first-child th { text-align: center; color: #516057; font-weight: 400; font-size: 12px; padding: 4px; }
+  thead tr:nth-child(2) th { background: #f4f7f3; }
+  td { height: 53px; }
+  .selected { box-shadow: inset 0 0 0 2px #276748; }
+  .changed { background: #fff1ad; }
+  .paid { color: #125832; font-weight: 650; }
+  .details { border-top: 1px solid #e1e7e1; padding: 14px 16px; min-height: 63px; }
+  .details strong { display: block; }
+  .step { margin-top: 20px; }
+  .step h2 { margin: 0; font-size: 21px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  button { font: inherit; cursor: pointer; padding: 8px 14px; border: 1px solid #c7d3c9; background: #fff; color: #202a23; border-radius: 6px; }
+  #next { background: #1e6543; color: white; border-color: #1e6543; font-weight: 600; }
+  button:focus-visible { outline: 3px solid #537ab4; outline-offset: 2px; }
+</style>
+<main>
+  <h1>Track bills in Family Accounts</h1>
+  <p class="muted">Interactive prototype with sample data. Set one instruction and follow a bill from Gmail to a paid row in Excel.</p>
+  <section class="workbook" aria-label="Family Accounts workbook">
+    <div class="bar"><strong>Family Accounts</strong></div>
+    <div class="grid">
+      <table>
+        <thead>
+          <tr aria-hidden="true"><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr>
+          <tr><th scope="col">Merchant</th><th scope="col">Billing month</th><th scope="col">Amount due</th><th scope="col">Due date</th><th scope="col">Payment status</th></tr>
+        </thead>
+        <tbody id="bill-rows"></tbody>
+      </table>
+    </div>
+    <div class="details" id="details" hidden><strong id="detail-title"></strong><p id="detail-text"></p><p class="muted" id="detail-extra"></p></div>
+  </section>
+  <section class="step" aria-live="polite">
+    <h2 id="step-title"></h2>
+    <p id="step-text"></p>
+  </section>
+  <div class="buttons">
+    <button id="next" type="button"></button>
+    <button id="back" type="button">Back</button>
+    <button id="restart" type="button">Start over</button>
+  </div>
+</main>
+<script>
+  const instruction = 'Track new bills for these merchants and reconcile payments.';
+  const november = ['BESCOM electricity', 'November', '₹2,140', '10 Nov', 'Paid · 9 Nov'];
+  const december = ['BESCOM electricity', 'December', '₹2,380', '10 Dec', 'No payment evidence found'];
+  const decemberPaid = [...december.slice(0, -1), 'Paid · 8 Dec'];
+  const steps = [
+    { title: 'Start with the table you already use', text: 'Family Accounts has a November BESCOM bill. Select the table to track future bills for the merchants already there.', action: 'Select Family Accounts' },
+    { title: 'Set one instruction for the table', text: 'This instruction applies to new bills and payment receipts for BESCOM.', action: 'Connect demo Gmail', selected: true, detailTitle: 'Track bills', detailText: instruction, detailExtra: 'Tracked merchants · BESCOM electricity' },
+    { title: 'Choose when it runs', text: 'Sheetdot searches Gmail automatically. You can optionally choose a label to narrow the search.', action: 'Start tracking daily at 8 am', detailTitle: 'Track bills', detailText: instruction, detailExtra: 'Source · Gmail connected' },
+    { title: 'The first check is complete', text: 'The first run checked the existing row and looked for current-month bills. It’s 1 Dec, and the December bill hasn’t arrived yet. You can edit the Schedule cell in Automations any time.', action: 'Simulate the next run with Excel closed', detailTitle: 'Automations', detailText: instruction, detailExtra: 'Daily at 8 am · Active · Last run 1 Dec' },
+    { title: 'The December bill gets its own row', text: 'A bill arrived in Gmail. WATCH added its amount and due date while Excel was closed. On reopening, the new row is yellow and November is still there.', action: 'Open the bill comment', bill: december, highlight: 'row' },
+    { title: 'See why the row was added', text: 'The source comment records the bill that supplied the amount and due date. The real comment would link to the email.', action: 'Simulate a later run after the receipt arrives', bill: december, detailTitle: 'C3 · Source comment', detailText: 'Gmail · BESCOM December bill · Received 2 Dec', detailExtra: '₹2,380 due 10 Dec · Checked 3 Dec at 8 am' },
+    { title: 'The receipt updates that same row', text: 'WATCH found a receipt for the December bill. The payment status is the only cell that changed.', action: 'Open the payment comment', bill: decemberPaid, highlight: 'status' },
+    { title: 'See what matched', text: 'The December status comment shows the evidence Sheetdot used to mark it paid.', action: 'Run it again', bill: decemberPaid, detailTitle: 'E3 · Source comment', detailText: 'Gmail · BESCOM payment receipt · Received 8 Dec', detailExtra: 'Matched BESCOM, ₹2,380, and the December bill · Checked 9 Dec at 8 am' },
+    { title: 'A repeat run leaves the table as it was', text: 'WATCH recognizes the same bill and receipt. November and December each still have one row.', bill: decemberPaid, detailTitle: 'Automations', detailText: instruction, detailExtra: 'Daily at 8 am · Last run 10 Dec · No changes' }
+  ];
+
+  const element = (id) => document.getElementById(id);
+  let currentStep = 0;
+
+  function render() {
+    const step = steps[currentStep];
+    element('step-title').textContent = step.title;
+    element('step-text').textContent = step.text;
+    const bills = step.bill ? [november, step.bill] : [november];
+    const rows = bills.map((bill, rowIndex) => {
+      const row = document.createElement('tr');
+      bill.forEach((value, columnIndex) => {
+        const cell = row.insertCell();
+        const statusColumn = columnIndex === bill.length - 1;
+        cell.textContent = value;
+        if (step.selected && columnIndex === 0) cell.classList.add('selected');
+        if (statusColumn && value.startsWith('Paid')) cell.classList.add('paid');
+        if (rowIndex === 1 && (step.highlight === 'row' || (step.highlight === 'status' && statusColumn))) {
+          cell.classList.add('changed');
+        }
+      });
+      return row;
+    });
+    element('bill-rows').replaceChildren(...rows);
+    element('details').hidden = !step.detailTitle;
+    element('detail-title').textContent = step.detailTitle ?? '';
+    element('detail-text').textContent = step.detailText ?? '';
+    element('detail-extra').textContent = step.detailExtra ?? '';
+    element('detail-extra').hidden = !step.detailExtra;
+    element('next').textContent = step.action ?? 'Replay walkthrough';
+    element('back').hidden = currentStep === 0;
+    element('restart').hidden = currentStep === 0 || currentStep === steps.length - 1;
+  }
+
+  element('next').onclick = () => { currentStep = (currentStep + 1) % steps.length; render(); };
+  element('back').onclick = () => { currentStep -= 1; render(); };
+  element('restart').onclick = () => { currentStep = 0; render(); element('next').focus(); };
+  render();
+</script>
+</html>

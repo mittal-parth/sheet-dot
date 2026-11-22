@@ -5,6 +5,7 @@ let previousAutomations;
 let automationsQueue = Promise.resolve();
 let subscribedSheet;
 let retryAutomations;
+let billWatchIds = new Map();
 
 function watchSheetStatus(message, tone = "success") {
   const status = document.querySelector("#automations-status");
@@ -94,14 +95,16 @@ async function reconcileAutomationEdits(workbook, rows) {
   const current = new Map(rows.map(row => [row[0], row[2]]));
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   for (const [address, oldSchedule] of previousAutomations) {
+    const billId = billWatchIds.get(address);
     try {
       if (!current.has(address)) {
-        await requestSheetdot("/automations", { workbook, address }, "DELETE");
+        if (billId) await requestBills("stop", { id: billId });
+        else await requestSheetdot("/automations", { workbook, address }, "DELETE");
         watchSheetStatus(`Stopped and removed ${address}.`);
       } else if (current.get(address) !== oldSchedule) {
-        await requestSheetdot("/automations", {
-          workbook, address, schedule: current.get(address), timezone,
-        }, "PATCH");
+        const schedule = current.get(address);
+        if (billId) await requestBills("schedule", { id: billId, schedule });
+        else await requestSheetdot("/automations", { workbook, address, schedule, timezone }, "PATCH");
         watchSheetStatus(`Updated the schedule for ${address}.`);
       }
     } catch (error) {
@@ -115,7 +118,11 @@ async function synchronizeAutomations(activate) {
   const workbook = await getWorkbookId();
   let rows = await readAutomationRows(activate, activate);
   if (rows) await reconcileAutomationEdits(workbook, rows);
-  const { schedules } = await requestSheetdot("/automations", { workbook });
+  const [formulas, bills] = await Promise.all([
+    requestSheetdot("/automations", { workbook }), requestBills("status"),
+  ]);
+  const billSchedules = bills.schedules.map(item => ({ ...item, address: `Bill table!${item.name}` }));
+  const schedules = [...formulas.schedules, ...billSchedules];
   if (!rows && schedules.length === 0) return;
   rows ??= await readAutomationRows(true, false);
 
@@ -125,6 +132,7 @@ async function synchronizeAutomations(activate) {
   ]);
   if (await writeAutomationRows(rows, desired)) {
     previousAutomations = new Map(desired.map(row => [row[0], row[2]]));
+    billWatchIds = new Map(billSchedules.map(item => [item.address, item.id]));
   } else {
     refreshWatchSheet();
   }

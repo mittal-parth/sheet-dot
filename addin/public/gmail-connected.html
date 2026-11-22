@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Sheetdot · Gmail</title>
+<p>Return to Excel to check your Gmail connection.</p>
+<script>
+  if (location.hash) {
+    try {
+      const target = new URL(decodeURIComponent(location.hash.slice(1)));
+      if (target.protocol === 'https:' && target.hostname.endsWith('.composio.dev')) {
+        location.replace(target.href);
+      }
+    } catch {
+      document.querySelector('p').textContent = 'The Gmail link could not be opened. Try connecting again from Excel.';
+    }
+  }
+</script>
+</html>
