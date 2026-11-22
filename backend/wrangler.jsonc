@@ -4,5 +4,8 @@
   "compatibility_date": "2026-06-01",
   "assets": { "directory": "../addin/public", "html_handling": "none" },
   "durable_objects": {"bindings": [{"name": "WORKBOOKS", "class_name": "Workbook"}]},
-  "migrations": [{"tag": "v1", "new_sqlite_classes": ["Workbook"]}]
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["Workbook"]}],
+  "previews": {
+    "durable_objects": {"bindings": [{"name": "WORKBOOKS", "class_name": "Workbook"}]}
+  }
 }
