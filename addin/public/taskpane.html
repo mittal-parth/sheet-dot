@@ -13,6 +13,7 @@
   <script defer src="bills.js"></script>
   <script defer src="automations.js"></script>
   <script defer src="suggestions.js"></script>
+  <script defer src="demo-refresh.js"></script>
   <script defer src="probe.js"></script>
 </head>
 <body>
@@ -64,6 +65,13 @@
       <p>Add preferences for ASK and WATCH in this workbook. Enter a name and value on each row.</p>
       <button class="secondary" id="open-about-me" type="button" disabled>Open About me</button>
       <p class="feedback" id="about-me-status" role="status" data-tone="error"></p>
+    </section>
+
+    <section class="pane-section" aria-labelledby="demo-feed-title">
+      <h2 id="demo-feed-title">Demo workbook</h2>
+      <button class="secondary" id="add-demo-sheets" type="button" disabled>Open live demo</button>
+      <button class="secondary" id="refresh-demo-feed" type="button" disabled>Refresh demo data</button>
+      <p class="feedback" id="demo-feed-status" role="status"></p>
     </section>
 
     <details class="diagnostics">

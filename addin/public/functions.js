@@ -169,13 +169,19 @@ async function showAnswer(input, invocation) {
   }
 }
 
-CustomFunctions.associate("ASK", (question, row, refreshKey, invocation) =>
-  showAnswer({ question, row: row ?? [] }, invocation ?? refreshKey));
+// Excel passes the invocation last, including when its cached metadata still supplies older arguments.
+CustomFunctions.associate("ASK", (question, ...args) => {
+  const invocation = args.pop();
+  return showAnswer({ question, row: args[0] ?? [] }, invocation);
+});
 
-CustomFunctions.associate("CHECK", (question, row, refreshKey, invocation) =>
-  showAnswer({ kind: "check", question, row: row ?? [] }, invocation ?? refreshKey));
+CustomFunctions.associate("CHECK", (question, ...args) => {
+  const invocation = args.pop();
+  return showAnswer({ kind: "check", question, row: args[0] ?? [] }, invocation);
+});
 
-CustomFunctions.associate("LIST", async (question, count, refreshKey, invocation = refreshKey) => {
+CustomFunctions.associate("LIST", async (question, count, ...args) => {
+  const invocation = args.at(-1);
   let canceled = false;
   invocation.onCanceled = () => { canceled = true; };
   const isCanceled = () => canceled;
@@ -190,8 +196,9 @@ CustomFunctions.associate("LIST", async (question, count, refreshKey, invocation
   }
 });
 
-CustomFunctions.associate("WATCH", (question, row, schedule, logical, cellKey, invocation = cellKey ?? logical) => {
-  logical = logical === true;
+CustomFunctions.associate("WATCH", (question, row, schedule, ...args) => {
+  const invocation = args.pop();
+  const logical = args[0] === true;
   let canceled = false;
   let timer;
   let displayed;

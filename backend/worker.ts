@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { BillWatch, billRequest } from "./bills";
+import { bengaluruWeatherMcp, bitcoinTradesMcp, demoFeedRequest } from "./demo-feeds.mjs";
 import { answerQuestion, MAX_LIST_ROWS, modelInput, type Answer, type AnswerInput, type Preferences } from "./ask";
 import { suggestColumns, suggestionInput } from "./suggestions";
 import {
@@ -296,6 +297,9 @@ export default {
   async fetch(request: Request, env: Env) {
     const { pathname } = new URL(request.url);
     if (pathname === "/gmail-bills") return billRequest(request, env);
+    if (pathname === "/demo-feed") return demoFeedRequest(request);
+    if (pathname === "/bengaluru-weather/mcp") return bengaluruWeatherMcp(request);
+    if (pathname === "/bitcoin-trades/mcp") return bitcoinTradesMcp(request);
     if (pathname === "/health") {
       const workbook = env.WORKBOOKS.getByName("compatibility-test");
       return Response.json({ sqlite: await workbook.ping() === 1 });

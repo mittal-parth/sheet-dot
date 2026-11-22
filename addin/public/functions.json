@@ -6,8 +6,7 @@
       "description": "Ask Sheetdot a question and reuse the saved answer when the inputs are unchanged.",
       "parameters": [
         { "name": "question", "type": "string", "dimensionality": "scalar" },
-        { "name": "row", "type": "any", "dimensionality": "matrix", "optional": true },
-        { "name": "refreshKey", "type": "string", "dimensionality": "scalar", "optional": true, "description": "Compatibility argument for older workbooks." }
+        { "name": "row", "type": "any", "dimensionality": "matrix", "optional": true }
       ],
       "result": { "type": "string", "dimensionality": "scalar" },
       "options": { "stream": true, "requiresStreamAddress": true }
@@ -18,8 +17,7 @@
       "description": "Evaluate a condition using workbook data and return TRUE or FALSE.",
       "parameters": [
         { "name": "condition", "type": "string", "dimensionality": "scalar" },
-        { "name": "row", "type": "any", "dimensionality": "matrix", "optional": true },
-        { "name": "refreshKey", "type": "string", "dimensionality": "scalar", "optional": true, "description": "Compatibility argument for older workbooks." }
+        { "name": "row", "type": "any", "dimensionality": "matrix", "optional": true }
       ],
       "result": { "type": "boolean", "dimensionality": "scalar" },
       "options": { "stream": true, "requiresStreamAddress": true }
@@ -30,8 +28,7 @@
       "description": "Spill a table with column headers and up to the requested number of matching rows.",
       "parameters": [
         { "name": "request", "type": "string", "dimensionality": "scalar" },
-        { "name": "count", "type": "number", "dimensionality": "scalar", "description": "Maximum number of data rows, from 1 to 50." },
-        { "name": "refreshKey", "type": "string", "dimensionality": "scalar", "optional": true, "description": "Compatibility argument for older workbooks." }
+        { "name": "count", "type": "number", "dimensionality": "scalar", "description": "Maximum number of data rows, from 1 to 50." }
       ],
       "result": { "type": "any", "dimensionality": "matrix" },
       "options": { "cancelable": true, "requiresAddress": true }
@@ -44,8 +41,7 @@
         { "name": "question", "type": "string", "dimensionality": "scalar" },
         { "name": "row", "type": "any", "dimensionality": "matrix" },
         { "name": "schedule", "type": "string", "dimensionality": "scalar", "description": "For example, every 1 min, daily 8am, or in 1 min." },
-        { "name": "logical", "type": "boolean", "dimensionality": "scalar", "optional": true, "description": "Return TRUE or FALSE for a condition." },
-        { "name": "cellKey", "type": "string", "dimensionality": "scalar", "optional": true, "description": "Optional identifier for a scheduled cell." }
+        { "name": "logical", "type": "boolean", "dimensionality": "scalar", "optional": true, "description": "Return TRUE or FALSE for a condition." }
       ],
       "result": { "type": "any", "dimensionality": "scalar" },
       "options": { "stream": true, "requiresStreamAddress": true }

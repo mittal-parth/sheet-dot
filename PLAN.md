@@ -2,6 +2,8 @@
 
 > The [Family Accounts walkthrough](docs/bill-walkthrough-prototype.html) shows the proposed Gmail bill flow. The [original mockup](docs/mockup.html) shows the earlier workbook concept.
 
+Open the hosted Sheetdot add-in in Excel for the web and choose **Open live demo**. The [live demo script](docs/live-demo.md) has the formulas, order, and Gmail setup.
+
 ## Context
 
 A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, into everyday AI products"**.
