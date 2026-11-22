@@ -196,6 +196,9 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
   let displayed;
   let lastWatch;
   let preferencesSynced = false;
+  let table;
+  let readTableAfter = 0;
+  let lastEditIssue;
   const controller = new AbortController();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   invocation.onCanceled = () => {
@@ -212,20 +215,43 @@ CustomFunctions.associate("WATCH", (question, row, schedule, invocation) => {
         preferencesSynced = true;
       }
       if (canceled) return;
+      const { address } = invocation;
+      if (Date.now() >= readTableAfter) {
+        try {
+          table = await readWatchTable(address);
+          readTableAfter = Date.now() + 60_000;
+        } catch (error) {
+          logWatchEditError(error);
+        }
+      }
+      if (canceled) return;
+      const receipts = watchEditReceipts.get(address);
+      const applied = receipts ? [...receipts.keys()] : [];
       const watch = await requestSheetdot("/watch", {
-        workbook, question, row, schedule, timezone, address: invocation.address,
+        workbook, question, row, schedule, timezone, address, table, applied,
       }, "POST", controller.signal);
       if (canceled) return;
       const revision = JSON.stringify([watch.id, watch.status, watch.lastRunAt]);
       if (revision !== lastWatch) {
         lastWatch = revision;
+        lastEditIssue = undefined;
         globalThis.refreshWatchSheet?.();
       }
       if (watch.status === "failed") throw new Error(watch.error);
-      const value = watch.value ?? (watch.status === "stopped" ? "Stopped" : "Scheduled");
+      for (const id of applied) receipts.delete(id);
+      if (receipts && !receipts.size) watchEditReceipts.delete(address);
+      const value = lastEditIssue ?? watch.value ?? (watch.status === "stopped" ? "Stopped" : "Scheduled");
       if (value !== displayed) {
         invocation.setResult(value);
         displayed = value;
+      }
+      if (watch.patches?.length && watch.status !== "stopped") {
+        queueWatchEdits(address, watch.patches, () => canceled, issue => {
+          if (canceled || !issue || lastWatch !== revision) return;
+          lastEditIssue = issue;
+          invocation.setResult(issue);
+          displayed = issue;
+        });
       }
       timer = setTimeout(poll, 10_000);
     } catch (error) {
