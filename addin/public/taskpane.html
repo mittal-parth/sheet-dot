@@ -10,6 +10,7 @@
   <script defer src="watch-edits.js"></script>
   <script defer src="functions.js"></script>
   <script defer src="about-me.js"></script>
+  <script defer src="bills.js"></script>
   <script defer src="automations.js"></script>
   <script defer src="suggestions.js"></script>
   <script defer src="probe.js"></script>
@@ -23,6 +24,19 @@
     </label>
     <p class="intro">Select a table or range with headers to see suggestions beside it. Sheetdot sends the headers, up to five sample rows, and About me preferences to OpenAI.</p>
     <p class="feedback" id="suggestion-status" role="status"></p>
+
+    <section class="pane-section" aria-labelledby="bill-watch-title">
+      <h2 id="bill-watch-title">Track bills</h2>
+      <p class="intro">Select an Excel table with Merchant, Amount due and Due date columns. Sheetdot searches Gmail for new bills and payments for the merchants in the table.</p>
+      <button class="secondary" id="connect-gmail" type="button" disabled>Connect Gmail</button>
+      <form id="bill-watch-form">
+        <p><label for="bill-watch-schedule">Schedule</label><br><input id="bill-watch-schedule" value="daily 8am" required></p>
+        <p><label for="bill-watch-label">Gmail label (optional)</label><br><input id="bill-watch-label" maxlength="100"></p>
+        <p><label for="bill-watch-import">Import older bills from (optional)</label><br><input id="bill-watch-import" type="month"></p>
+        <button class="primary" id="start-bill-watch" type="submit" disabled>Track bills in selected table</button>
+      </form>
+      <p class="feedback" id="bill-watch-status" role="status"></p>
+    </section>
 
     <section class="pane-section" aria-labelledby="automations-title">
       <h2 id="automations-title">Automations</h2>

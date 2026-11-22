@@ -334,6 +334,20 @@ function scheduleColumnSuggestions() {
   suggestionTimer = setTimeout(() => queueSuggestionWork(() => refreshColumnSuggestions(revision)), 350);
 }
 
+function withSuggestionPreviewCleared(work) {
+  ++selectionRevision;
+  clearTimeout(suggestionTimer);
+  const operation = suggestionQueue.then(async () => {
+    await clearSuggestionPreview();
+    suggestionStatus("");
+    return work();
+  });
+  suggestionQueue = operation.catch(() => {});
+  return operation.finally(() => {
+    if (suggestionsEnabled) scheduleColumnSuggestions();
+  });
+}
+
 function acceptChangedSuggestion({ worksheetId, address, source }) {
   if (!suggestionsEnabled || source === "Remote" || !suggestionPreview || worksheetId !== suggestionPreview.area.sheet) return;
   const preview = suggestionPreview;

@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { BillWatch, billRequest } from "./bills";
 import { answerQuestion, MAX_LIST_ROWS, modelInput, type Answer, type AnswerInput, type Preferences } from "./ask";
 import { suggestColumns, suggestionInput } from "./suggestions";
 import {
@@ -7,7 +8,9 @@ import {
 } from "./watch";
 import { isWatchTable, type WatchTable } from "./watch-edits";
 
-type Env = {
+export { BillWatch };
+
+type Env = Parameters<typeof billRequest>[1] & {
   WORKBOOKS: DurableObjectNamespace<Workbook>;
   OPENAI_API_KEY?: string;
 };
@@ -292,6 +295,7 @@ export class Workbook extends DurableObject<Env> {
 export default {
   async fetch(request: Request, env: Env) {
     const { pathname } = new URL(request.url);
+    if (pathname === "/gmail-bills") return billRequest(request, env);
     if (pathname === "/health") {
       const workbook = env.WORKBOOKS.getByName("compatibility-test");
       return Response.json({ sqlite: await workbook.ping() === 1 });

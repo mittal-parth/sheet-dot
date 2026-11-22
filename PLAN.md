@@ -1,6 +1,6 @@
 # Plan: Sheetdot, Excel as the control plane for personal agents
 
-> [Clickable product mockup](docs/mockup.html)
+> The [Family Accounts walkthrough](docs/bill-walkthrough-prototype.html) shows the proposed Gmail bill flow. The [original mockup](docs/mockup.html) shows the earlier workbook concept.
 
 ## Context
 
@@ -38,16 +38,17 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 - **AI answers are saved.** Unchanged inputs reuse the saved answer. WATCH can update its result on a schedule.
 - **Schedules in plain words** ("daily 8am", "every 1 min") in both `AI.WATCH` and ⏰ Automations. Editing the Schedule cell reschedules the job.
 - **A WATCH can add rows,** but only to its own table.
-- **Real actions only, approved by a human.** The agent proposes an action in the row (amber cell + native checkbox). Ticking the box runs it for real.
+- **Family Accounts uses one standing instruction for the table.** It tracks new bills for the merchants you already track and reconciles their payments. Each bill has its own row, so earlier months stay visible.
+- **Later milestone, actions approved by a human.** The agent proposes an action in the row (amber cell + native checkbox). Ticking the box runs it for real.
   - v0 actions: send a Gmail email, create a Calendar event, a real UPI payment link or QR. We never move money.
 - **Unticked actions are re-decided on every WATCH run** (kept, replaced or cleared). A stale action never runs.
 - **No inbox or "needs you" sheet. Colour is the signal** (see the colour language below).
 - **Two special sheets:**
   - 🙋 **About me:** facts and preferences, plus a small Connections table.
-  - ⏰ **Automations:** one row per WATCH.
+  - ⏰ **Automations:** one row per WATCH, including the Family Accounts table watch.
 - **Onboarding:**
   - Formulas work immediately with web search.
-  - When a question needs Gmail, the cell says `🔌 Needs Gmail`. Ribbon **Connect** opens Composio's OAuth in an Office pop-up.
+  - **Connect Gmail** opens Composio's OAuth. The Family Accounts watch uses read-only access to find bills and receipts. A Gmail label is optional.
 - **Distribution:**
   - Hackathon: sideload, plus a "try it yourself" page.
   - Later: Microsoft Marketplace.
@@ -72,9 +73,10 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 | `=AI.CHECK(condition, row)` | TRUE/FALSE, which drives Excel's own conditional formatting |
 | `=AI.LIST(request, n)` | Fills in a table out of nothing |
 | `=AI.WATCH(question, row, "daily 8am")` | A standing order. The formula is the schedule. |
+| **Track bills** on the Family Accounts table | One standing instruction that finds new bills and reconciles payments for tracked merchants |
 | Grey suggestions beside a table | Tick one to add a column with Excel or AI formulas |
 | Sheetdot task pane | Enable column suggestions and manage schedules |
-| Excel **note** on a cell | Where the answer came from, and when |
+| Excel **comment** on a cell | Where the answer came from, and when |
 | ⏰ Automations sheet | Every WATCH. Edit Schedule to change it, delete the row to stop it. |
 | 🙋 About me sheet | The agent's memory and instructions, plus the Connections table |
 
@@ -83,7 +85,7 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 | Look | Means |
 |---|---|
 | ⏳ | Working |
-| Excel note marker | Filled by an agent (hover to see the source) |
+| Excel comment marker | Open the comment to see the source |
 | Grey header, description and ☐ beside the table | Suggested column. Tick to add it and calculate the rows. |
 | **Yellow fill** | Changed since you last looked. Clears when you select it. |
 | **Amber cell + ☐** | The agent wants to do something. Tick to approve. |
@@ -91,17 +93,24 @@ A hackathon entry for **Equal AI x OpenAI, "Build Creative: personal context, in
 | Grey italic | `🔌 Needs Gmail` / `⚠ failed`; hover for why |
 | Red / green rows | *Your* rules: Excel's own conditional formatting |
 
+## Family Accounts product flow
+
+1. Select the Family Accounts table in Excel and choose **Track bills**. Review the standing instruction, “Track new bills for these merchants and reconcile payments.” The table’s merchants are the starting list.
+2. Connect Gmail and set a schedule, such as **daily 8 am**. Sheetdot searches for relevant emails automatically. You can optionally narrow searches to a Gmail label. Automations shows the instruction, schedule, and run status.
+3. Setup runs the first check immediately. It checks existing rows for payment evidence and adds missing bills from the current billing month. You can request an import for older bills.
+4. Each scheduled run uses the latest known table state and searches Gmail, including while Excel is closed. A December BESCOM bill adds a December row with its amount and due date. A subsequent matching receipt updates that row to **Paid**. Repeat runs leave matching rows alone.
+5. Open Excel to see new or changed cells highlighted in yellow. Open a source comment to see the email, why it matched, and when Sheetdot checked it. Change the schedule in Automations.
+
+A merchant receipt or bank debit alert can establish payment when the merchant, amount, and billing period match. Use **Needs review** for ambiguous evidence and **No payment evidence found** when there is only a bill. A clearly matching revision updates the amount or due date on an open bill. A revision to a paid bill flags it for review. New merchants require opt-in. If Gmail disconnects, keep the last verified result and show **Reconnect Gmail** in Automations. Scheduled checks drive the first version.
+
+To try this flow, start with an Excel Table with **Merchant**, **Amount due**, and **Due date** columns. Enter INR amounts as numbers and due dates as Excel dates. **Track bills** adds **Billing month**, **Payment status**, and a stable bill ID column if needed. For local development, `npm --prefix backend run dev` loads `OPENAI_API_KEY`, `COMPOSIO_API_KEY`, and `COMPOSIO_GMAIL_AUTH_CONFIG_ID` from the repository's top-level `.env`. Use a Gmail auth configuration with `gmail.readonly`.
+
 ## Demo script (3 minutes)
 
-1. Open "Family accounts" and enable column suggestions. Select the table and accept a suggested column. Connect Gmail for the payment-check formulas once that integration is available.
-2. Use a TRUE/FALSE check to drive native conditional formatting for rows that need attention.
-3. Enter an `AI.WATCH` formula with `"every 1 min"`. Its schedule appears in ⏰ Automations.
-4. **Close the tab.** Wait for a real run. Reopen and show:
-   - yellow cells: BESCOM is now paid, so its row is no longer red;
-   - a **new Spotify row**;
-   - amber **"📧 Email Ramesh (LIC) for the premium link ☐"**.
-5. Tick it. The email really arrives on a phone on stage. The cell turns green.
-6. **Second act, Flat hunt:** `=AI.LIST(...)` spills listings. Select the results to see suggested columns, then accept one from the grid.
+1. Select Family Accounts, choose **Track bills**, connect the demo Gmail account, and set **every 1 min**. Show the single instruction in Automations.
+2. Close Excel and deliver a new BESCOM bill to the demo inbox. After the next run, reopen Excel. Show the new bill row, its amount and due date, and the source comment. Point out the previous month’s row.
+3. Deliver the matching receipt before the next run. Show the same row turn **Paid**, then open the comment for the receipt. A repeat run keeps the row count and payment status stable.
+4. **Second act, Flat hunt.** `=AI.LIST(...)` spills listings. Select the results and accept a suggested column from the grid.
 
 ### Try column suggestions locally
 
@@ -254,7 +263,7 @@ The aim: **I can check almost everything myself, without you clicking in Excel.*
 | V1 | Pure logic | Vitest unit tests: schedule parsing, cache keys, patch merge, the action state machine (proposed → approved → done / cleared), suggestion recipes, colour rules | Me, on every change |
 | V2 | Add-in against a fake Excel | Microsoft's `office-addin-mock` for the `Excel.run` adapter: assert that notes, fills, conditional formats and checkboxes are requested correctly | Me |
 | V3 | Real OpenAI + Composio | `scripts/verify-agents.ts`: one ASK with web search, one Gmail read, one automation fired by webhook → patch stored. Uses real keys. | Me (needs your keys) |
-| V4 | Full flow with no Excel | `scripts/fake-workbook.ts` plays the add-in: register a workbook → sync rows → ASK → create a one-minute WATCH → wait for a real run → pull patches → approve an action → check the email was sent. It prints a pass/fail checklist. | Me |
+| V4 | Full bill flow with no Excel | Register the table, sync rows, create a one-minute WATCH, and pull patches after each run. Verify that a bill adds one row, the receipt updates it with evidence, and a repeat run makes no changes. | Me |
 | V5 | Backend state | `GET /debug/:workbook` shows the cache, automations (with next run), runs, patches, actions and last-seen values. Every script asserts against it. | Me |
 | V6 | Real Excel | Follow the demo script in Excel for the web. Check workbook opt-in, preview cleanup and return, and acceptance of the second suggestion first on both a plain range and a native Excel Table. | Either of us in a signed-in Excel session |
 | V7 | Demo rehearsal | Fresh browser, sideload, template, demo script with the tab closed during the 1-minute run. Twice in a row without a failure. | Both |
@@ -266,9 +275,9 @@ Definition of done for the hackathon: V1–V5 green, V6 passes in real Excel, V7
 | # | What | Why | Notes |
 |---|---|---|---|
 | 1 | **Microsoft account** (personal) signed in at excel.com, plus a blank workbook in OneDrive | Sideloading and the real-Excel tests | Any outlook.com / hotmail / Gmail-backed Microsoft account |
-| 2 | **OpenAI API key** with Agents API access (beta, `OpenAI-Beta: agents=v1`) and some credits | Engine | Check whether hackathon credits come with it. Put it in `sheetdot/backend/.dev.vars` (I'll add it to `.gitignore`); never paste it in chat. |
+| 2 | **OpenAI API key** with Agents API access (beta, `OpenAI-Beta: agents=v1`) and some credits | Engine | Check whether hackathon credits come with it. Store the key in the gitignored root `.env`. |
 | 3 | **OpenAI webhook signing secret** for our worker URL | Automations → our backend | Created in the OpenAI dashboard once the worker URL exists (after step 2). I'll tell you the URL. |
-| 4 | **Composio account + API key**, with Gmail and Google Calendar enabled (Composio's managed OAuth app is fine for now) | Connections and actions | Same `.dev.vars` file |
+| 4 | **Composio account + API key** and a read-only Gmail auth configuration | Gmail connection | Store the key and config ID in the root `.env`. |
 | 5 | **A Gmail account for the demo** with real bank-alert and bill emails | The personal source | Recommended: a fresh demo Gmail that you forward real HDFC/LIC/BESCOM/Netflix alerts into, so your real inbox isn't on stage. Your call. |
 | 6 | **Cloudflare account** (free) | Hosting the backend | You'll run `npx wrangler login` once; it opens the browser. |
 | 7 | **Household rows for the template** (expense, amount, due day) | Family accounts sheet | Real or realistic numbers; you choose what's shown on stage |
