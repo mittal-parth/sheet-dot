@@ -1,10 +1,35 @@
 # Sheetdot
 
-**A spreadsheet is the control plane for your personal agents.** You write AI formulas in Excel cells, and Sheetdot answers them, re-checks them on a schedule and keeps your tables up to date from Gmail, even while Excel is closed. There is no chat window: the sheet *is* the instruction.
+**Excel as the control plane for always-on personal agents.**
+
+## Brief
+
+In India, and especially among Indian dads, people love their good old Excel. From quick calculations to monthly expenses, flights, job hunts and life savings, there is an Excel sheet for everything. It has long been the richest source of personal context.
+
+Sheetdot brings always-running personal agents right inside Excel, connected to your favourite tools. There is no chat. Everything happens through Excel formulas, and they keep running even when Excel is closed. Imagine OpenAI Dots, but used natively through Excel.
+
+## Data flow diagram
 
 ![How data moves through Sheetdot](docs/sheetdot-data-flow.svg)
 
 Follow the numbers: the red path is an AI formula and the green path is a bill tracked from Gmail. The editable source is [docs/sheetdot-data-flow.excalidraw](docs/sheetdot-data-flow.excalidraw).
+
+## FAQs
+
+**1. Why not connect Claude (or ChatGPT, or Copilot) to Excel?**
+
+Those are chat panels beside the sheet. You ask, they edit the sheet, and then they stop. The instruction lives in a chat history, and nothing happens once you close Excel. In Sheetdot the instruction is a formula saved in the cell. It re-runs on its own schedule and reads your own sources, like Gmail.
+
+**2. Why not use plugins like [Autosheet](https://autosheet.com/)?**
+
+Functions like `=GPT()` work like a calculator: each call answers once, from the model or the web. They don't run on a schedule, don't remember the last run, can't read your personal sources, and do nothing while Excel is closed.
+
+**3. So how is Sheetdot different?**
+
+- **Standing orders, not one-off answers.** `=AI.WATCH(..., "daily 8am")` keeps checking and updates the cell when the answer changes.
+- **Runs with Excel closed.** Agents run in the cloud. Open the workbook and the changes are waiting, highlighted in yellow.
+- **Personal sources.** Connect Gmail, and Sheetdot can add a row for a new bill and mark it Paid when the receipt arrives.
+- **Excel-native.** No chat and no new app to learn. Results are cells, rows, comments that cite their source, and your own conditional formatting.
 
 ## Try it now
 
