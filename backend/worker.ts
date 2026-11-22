@@ -3,8 +3,9 @@ import { answerQuestion, MAX_LIST_ROWS, modelInput, type Answer, type AnswerInpu
 import { suggestColumns, suggestionInput } from "./suggestions";
 import {
   checkRecurringWatch, checkWatch, parseSchedule, scheduleLabel, scheduleRecurringWatch, scheduleWatch,
-  stopWatch, updateWatchPreferences, updateWatchSchedule, type SavedWatch, type Schedule, type WatchInput,
+  latestWatchInvocation, stopWatch, updateWatchTarget, updateWatchSchedule, type SavedWatch, type Schedule, type WatchInput,
 } from "./watch";
+import { isWatchTable, type WatchTable } from "./watch-edits";
 
 type Env = {
   WORKBOOKS: DurableObjectNamespace<Workbook>;
@@ -13,6 +14,7 @@ type Env = {
 
 type WatchEntry = {
   input: WatchInput;
+  table?: WatchTable;
   original: Schedule;
   schedule: Schedule;
   watch: SavedWatch;
@@ -159,7 +161,7 @@ export class Workbook extends DurableObject<Env> {
   private async syncWatchPreferences(address: string, entry: WatchEntry) {
     const about = this.aboutMe();
     if (!this.watchNeedsPreferences(entry, about.revision)) return entry;
-    await updateWatchPreferences(this.watchKey(), entry.watch.id, entry.input, about.preferences);
+    await updateWatchTarget(this.watchKey(), entry.watch.id, entry.input, about.preferences, entry.table);
     const updated = { ...entry, aboutRevision: about.revision };
     this.saveWatch(address, updated);
     return updated;
@@ -173,12 +175,12 @@ export class Workbook extends DurableObject<Env> {
     return watch;
   }
 
-  private async startWatch(input: WatchInput, schedule: Schedule) {
+  private async startWatch(input: WatchInput, schedule: Schedule, table?: WatchTable) {
     const key = this.watchKey();
     const { preferences, revision } = this.aboutMe();
     const watch = await (schedule.type === "once"
-      ? scheduleWatch(key, input, preferences)
-      : scheduleRecurringWatch(key, input, schedule, preferences));
+      ? scheduleWatch(key, input, preferences, table)
+      : scheduleRecurringWatch(key, input, schedule, preferences, table));
     return { watch, aboutRevision: revision };
   }
 
@@ -222,20 +224,48 @@ export class Workbook extends DurableObject<Env> {
         updated = { ...entry, schedule, watch };
       } else {
         await this.retireWatch(address, entry);
-        updated = { ...entry, schedule, ...await this.startWatch(entry.input, schedule) };
+        updated = { ...entry, schedule, ...await this.startWatch(entry.input, schedule, entry.table) };
       }
       this.saveWatch(address, updated);
       await this.syncWatchPreferences(address, updated);
     });
   }
 
-  watch(address: string, input: WatchInput, original: Schedule) {
+  watch(address: string, input: WatchInput, original: Schedule, reportedTable?: WatchTable | null, applied: string[] = []) {
     return this.serializeWatch(address, async () => {
       let entry = this.readWatch(address);
+      const table = reportedTable === undefined ? entry?.table : reportedTable ?? undefined;
       const sameSchedule = entry && JSON.stringify(entry.original) === JSON.stringify(original);
-      if (sameSchedule && (entry.removed || entry.watch.status === "stopped")) return entry.watch;
+      if (entry && sameSchedule && (entry.removed || entry.watch.status === "stopped")) return entry.watch;
 
-      if (sameSchedule && JSON.stringify(entry.input) === JSON.stringify(input)) {
+      const sameInput = entry && sameSchedule && JSON.stringify(entry.input) === JSON.stringify(input);
+      // Applying a patch can recalculate the referenced input range. Keep that watch
+      // and its pending runs when the prompt and containing table are still the same.
+      const keepEditing = entry && sameSchedule && entry.watch.editsEnabled &&
+        entry.input.question === input.question && entry.input.logical === input.logical && entry.table?.id === table?.id;
+      if (entry && (sameInput || keepEditing)) {
+        const about = this.aboutMe();
+        const oldTable = entry.table;
+        const tableChanged = JSON.stringify(oldTable) !== JSON.stringify(table);
+        const active = "recurring" in entry.watch ||
+          (entry.watch.status === "scheduled" && entry.watch.runAt > Date.now() / 1000);
+        if (active && (!sameInput || tableChanged)) {
+          try {
+            const editCursor = table && !oldTable && "recurring" in entry.watch
+              ? await latestWatchInvocation(this.watchKey(), entry.watch.id)
+              : entry.watch.editCursor;
+            await updateWatchTarget(this.watchKey(), entry.watch.id, input, about.preferences, table);
+            entry = { ...entry, input, table, aboutRevision: about.revision, watch: { ...entry.watch, editCursor } };
+            this.saveWatch(address, entry);
+          } catch (error) {
+            // A failed table sync should leave the existing answer and schedule available.
+            console.warn("Could not sync WATCH table", error instanceof Error ? error.message : "Unknown error");
+          }
+        }
+        if (applied.length && entry.watch.patches?.some(patch => applied.includes(patch.id))) {
+          entry.watch.patches = entry.watch.patches.filter(patch => !applied.includes(patch.id));
+          this.saveWatch(address, entry);
+        }
         entry = await this.syncWatchPreferences(address, entry);
         const { watch } = entry;
         if ("recurring" in watch) {
@@ -244,15 +274,15 @@ export class Workbook extends DurableObject<Env> {
           return watch;
         }
         const result = "recurring" in watch
-          ? await checkRecurringWatch(this.watchKey(), watch)
-          : await checkWatch(this.watchKey(), watch);
+          ? await checkRecurringWatch(this.watchKey(), watch, entry.table)
+          : await checkWatch(this.watchKey(), watch, entry.table);
         if (result !== watch) this.saveWatch(address, { ...entry, watch: result });
         return result;
       }
 
-      const schedule = sameSchedule ? entry.schedule : original;
+      const schedule = entry && sameSchedule ? entry.schedule : original;
       if (entry && !entry.removed) await this.retireWatch(address, entry);
-      const created = { input, original, schedule, ...await this.startWatch(input, schedule) };
+      const created = { input, original, schedule, table, ...await this.startWatch(input, schedule, table) };
       this.saveWatch(address, created);
       return (await this.syncWatchPreferences(address, created)).watch;
     });
@@ -289,7 +319,7 @@ export default {
     } catch {
       return Response.json({ error: "Invalid JSON." }, { status: 400 });
     }
-    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences, kind, count, logical } = body ?? {};
+    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences, kind, count, logical, table, applied } = body ?? {};
     const cell = watchAddress(address);
     if (typeof workbook !== "string" || !/^[a-f0-9]{64}$/.test(workbook) ||
       ((pathname === "/watch" || managing) && !cell)) {
@@ -378,7 +408,13 @@ export default {
       if (!timing) {
         return Response.json({ error: 'Use "in 1 min", a minute interval that divides an hour, or a daily time like "daily 8am".' }, { status: 400 });
       }
-      return Response.json(await target.watch(cell!, logical ? { ...input, logical } : input, timing));
+      if ((table != null && !isWatchTable(table)) || (applied !== undefined &&
+        (!Array.isArray(applied) || applied.length > 10 ||
+          !applied.every(id => typeof id === "string" && id.length > 0 && id.length <= 128)))) {
+        return Response.json({ error: "Invalid WATCH table or edit receipt." }, { status: 400 });
+      }
+      const scope = table && { id: table.id, columns: table.columns, watchColumn: table.watchColumn };
+      return Response.json(await target.watch(cell!, logical ? { ...input, logical } : input, timing, scope, applied));
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Unknown OpenAI error");
       const operation = pathname === "/watch" ? "check the schedule" : "get an OpenAI answer";
