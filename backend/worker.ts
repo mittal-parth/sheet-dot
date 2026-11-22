@@ -1,8 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
-import { answerQuestion, MAX_LIST_ROWS, modelInput, type Answer, type AnswerInput, type AskInput, type Preferences } from "./ask";
+import { answerQuestion, MAX_LIST_ROWS, modelInput, type Answer, type AnswerInput, type Preferences } from "./ask";
+import { suggestColumns, suggestionInput } from "./suggestions";
 import {
   checkRecurringWatch, checkWatch, parseSchedule, scheduleLabel, scheduleRecurringWatch, scheduleWatch,
-  stopWatch, updateWatchPreferences, updateWatchSchedule, type SavedWatch, type Schedule,
+  stopWatch, updateWatchPreferences, updateWatchSchedule, type SavedWatch, type Schedule, type WatchInput,
 } from "./watch";
 
 type Env = {
@@ -11,7 +12,7 @@ type Env = {
 };
 
 type WatchEntry = {
-  input: AskInput;
+  input: WatchInput;
   original: Schedule;
   schedule: Schedule;
   watch: SavedWatch;
@@ -172,7 +173,7 @@ export class Workbook extends DurableObject<Env> {
     return watch;
   }
 
-  private async startWatch(input: AskInput, schedule: Schedule) {
+  private async startWatch(input: WatchInput, schedule: Schedule) {
     const key = this.watchKey();
     const { preferences, revision } = this.aboutMe();
     const watch = await (schedule.type === "once"
@@ -228,7 +229,7 @@ export class Workbook extends DurableObject<Env> {
     });
   }
 
-  watch(address: string, input: AskInput, original: Schedule) {
+  watch(address: string, input: WatchInput, original: Schedule) {
     return this.serializeWatch(address, async () => {
       let entry = this.readWatch(address);
       const sameSchedule = entry && JSON.stringify(entry.original) === JSON.stringify(original);
@@ -266,7 +267,7 @@ export default {
       return Response.json({ sqlite: await workbook.ping() === 1 });
     }
 
-    if (!["/ask", "/watch", "/automations", "/about-me"].includes(pathname)) return new Response("Unknown route", { status: 404 });
+    if (!["/ask", "/watch", "/automations", "/about-me", "/suggest-columns"].includes(pathname)) return new Response("Unknown route", { status: 404 });
     const stopping = pathname === "/watch" && request.method === "DELETE";
     const managing = pathname === "/automations" && ["PATCH", "DELETE"].includes(request.method);
     if (request.method !== "POST" && !stopping && !managing) {
@@ -288,11 +289,22 @@ export default {
     } catch {
       return Response.json({ error: "Invalid JSON." }, { status: 400 });
     }
-    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences, kind, count } = body ?? {};
+    const { workbook, question, row = [], schedule, address, timezone = "UTC", preferences, kind, count, logical } = body ?? {};
     const cell = watchAddress(address);
     if (typeof workbook !== "string" || !/^[a-f0-9]{64}$/.test(workbook) ||
       ((pathname === "/watch" || managing) && !cell)) {
       return Response.json({ error: "Expected a workbook ID and a worksheet cell for WATCH changes." }, { status: 400 });
+    }
+    if (pathname === "/suggest-columns") {
+      const input = suggestionInput(body.headers, body.rows, preferences);
+      if (!input) return Response.json({ error: "Expected table headers and a small sample of its rows." }, { status: 400 });
+      try {
+        if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is missing from the Worker environment");
+        return Response.json({ suggestions: await suggestColumns(env.OPENAI_API_KEY, input) });
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : "Column suggestion failed");
+        return Response.json({ error: "Sheetdot could not generate suggestions. Select the table again to retry." }, { status: 502 });
+      }
     }
     const target = env.WORKBOOKS.getByName(workbook);
     if ((pathname === "/about-me" || (pathname === "/ask" && preferences !== undefined)) &&
@@ -342,6 +354,8 @@ export default {
       } else if (kind !== undefined && kind !== "check") {
         return Response.json({ error: "Unknown answer type." }, { status: 400 });
       }
+    } else if (logical !== undefined && typeof logical !== "boolean") {
+      return Response.json({ error: "Expected a boolean WATCH result flag." }, { status: 400 });
     }
     if (
       typeof question !== "string" || !question.trim() ||
@@ -364,7 +378,7 @@ export default {
       if (!timing) {
         return Response.json({ error: 'Use "in 1 min", a minute interval that divides an hour, or a daily time like "daily 8am".' }, { status: 400 });
       }
-      return Response.json(await target.watch(cell!, input, timing));
+      return Response.json(await target.watch(cell!, logical ? { ...input, logical } : input, timing));
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Unknown OpenAI error");
       const operation = pathname === "/watch" ? "check the schedule" : "get an OpenAI answer";

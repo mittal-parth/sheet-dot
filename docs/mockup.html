@@ -21,7 +21,6 @@
   .btn:hover{background:#e9f5ee;border-color:#bfe0cc}
   .btn .ic{font-size:19px;color:var(--xl);line-height:1}
   .btn .lb{font-size:12px}
-  .sep{width:1px;background:var(--grid);margin:2px 6px}
   .fx{height:30px;display:flex;align-items:center;border-bottom:1px solid var(--grid);font-family:Consolas,Menlo,monospace}
   .fx .ref{width:64px;border-right:1px solid var(--grid);padding:0 8px;color:var(--muted)}
   .fx .fxl{width:32px;text-align:center;color:var(--muted);font-style:italic;border-right:1px solid var(--grid)}
@@ -35,7 +34,13 @@
   td{min-width:96px;cursor:cell}
   td.sel{outline:2px solid var(--xl);outline-offset:-2px}
   tr.h td{font-weight:600}
-  td.qh{color:#5a3fc0}
+  .workspace{display:flex;flex:1;min-height:0}
+  .settings{flex:0 0 250px;border-left:1px solid var(--grid);padding:16px;overflow:auto}
+  .settings h2{margin:0 0 14px;font-size:16px}
+  .settings label{display:flex;gap:8px;align-items:baseline;font-weight:600}
+  .settings p{line-height:1.5;color:var(--muted)}
+  td.preview{background:#f5f5f5!important;color:#666!important;min-width:174px}
+  tr:not(.h) td.preview{font-size:12px}
   /* native-looking note marker (Excel shows a small red triangle for notes) */
   td.note::after{content:"";position:absolute;right:0;top:0;border-left:6px solid transparent;border-top:6px solid #d13438}
   td.busy{color:var(--muted);font-style:italic}
@@ -73,17 +78,21 @@
 </style>
 </head>
 <body>
-<div class="titlebar"><b>Excel</b><span style="opacity:.9" id="docname">Family accounts.xlsx · Saved to OneDrive</span></div>
+<div class="titlebar"><b>Excel</b><span style="opacity:.9" id="docname">Flat hunt.xlsx · Saved to OneDrive</span></div>
 <div class="tabs"><span>File</span><span>Home</span><span>Insert</span><span>Formulas</span><span>Data</span><span class="on">✦ Sheetdot</span></div>
 <div class="ribbon">
-  <div class="btn" id="b-fill"><span class="ic">✦</span><span class="lb">Fill column</span></div>
-  <div class="btn" id="b-refresh"><span class="ic">↻</span><span class="lb">Refresh</span></div>
-  <div class="btn" id="b-watch"><span class="ic">⏰</span><span class="lb">Keep fresh</span></div>
-  <div class="sep"></div>
+  <button class="btn" id="b-sheetdot" type="button" aria-expanded="false" aria-controls="settings">Open Sheetdot</button>
   <div class="btn" id="b-connect"><span class="ic">🔌</span><span class="lb">Connect</span></div>
 </div>
 <div class="fx"><span class="ref" id="ref">A1</span><span class="fxl">fx</span><span class="f" id="fx"></span></div>
-<div class="wrap"><table id="grid"></table></div>
+<div class="workspace">
+  <div class="wrap"><table id="grid"></table></div>
+  <aside class="settings" id="settings" hidden>
+    <h2>Sheetdot</h2>
+    <label><input type="checkbox" id="suggest">Suggest columns in this workbook</label>
+    <p>Select a table or range with headers to see suggestions beside it. Sheetdot sends the headers, up to five sample rows, and About me preferences to OpenAI.</p>
+  </aside>
+</div>
 <div class="sheets" id="sheets"></div>
 <div class="notebox" id="note"></div>
 <div class="toast" id="toast"></div>
@@ -99,13 +108,13 @@
 
 <script>
 /* ============ workbook model ============ */
-const COLS=8, L=i=>String.fromCharCode(65+i), $=id=>document.getElementById(id);
+const COLS=10, L=i=>String.fromCharCode(65+i), $=id=>document.getElementById(id);
 const C=(v,o={})=>({v,...o});            // cell
-let gmail=false;
+let gmail=false, suggestionsEnabled=false;
 
 const WB={
   "Family accounts":{ rows:[2,7], cf:{col:"E",cls:"cfred"}, cells:{
-    A1:C("Expense"),B1:C("Amount ₹"),C1:C("Due day"),D1:C("? Paid this month"),E1:C("? Needs attention"),F1:C("Next step"),G1:C("Do it"),
+    A1:C("Expense"),B1:C("Amount ₹"),C1:C("Due day"),D1:C("Paid this month"),E1:C("Needs attention"),F1:C("Next step"),G1:C("Do it"),
     A2:C("Home loan EMI (HDFC)"),B2:C(32400),C2:C(5),
     A3:C("LIC premium"),B3:C(18200),C3:C(28),
     A4:C("Airtel fibre"),B4:C(1179),C4:C(15),
@@ -113,7 +122,13 @@ const WB={
     A6:C("Maid salary"),B6:C(6000),C6:C(1),
     A7:C("BESCOM electricity"),B7:C(2140),C7:C(10),
   }},
-  "Flat hunt":{ rows:[2,7], cells:{ A1:C("",{f:'=AI.LIST("2BHK flats in HSR Layout under ₹40k, with link", 6)'}) }},
+  "Flat hunt":{ rows:[2,4], cells:{
+    A1:C("Listing",{f:'=AI.LIST("List sample flats with monthly rent, deposit, and bedrooms", 3)'}),
+    B1:C("Monthly rent"),C1:C("Deposit"),D1:C("Bedrooms"),
+    A2:C("Maple Court"),B2:C(1500),C2:C(2200),D2:C(2),
+    A3:C("Oak Terrace"),B3:C(1850),C3:C(900),D3:C(3),
+    A4:C("Birch Place"),B4:C(1300),C4:C(1500),D4:C(1),
+  }},
   "About me":{ rows:[2,4], cells:{
     A1:C("Connections"),B1:C("Status"),C1:C("On for this workbook"),
     A2:C("Gmail"),B2:C("not connected",{grey:1}),C2:C("—"),
@@ -136,13 +151,55 @@ const ANS={
      ["✗ not found","No BESCOM payment found; bill email received 2 Nov"]],
   E:[[false,"Paid"],[true,"Unpaid, due 28 Nov (in 7 days)"],[false,"Paid"],[false,"Paid"],[false,"Paid"],[true,"Unpaid and overdue since 10 Nov"]],
 };
-let cur="Family accounts", sel="D1", step=0;
+const suggestionSheets={
+  "Flat hunt":{ width:4, accepted:[], ideas:[
+    {title:"Rent per bedroom", description:"Monthly rent split by bedrooms",
+      formula:row=>`=IFERROR(B${row}/D${row},"")`,
+      value:(cells,row)=>Number((cells["B"+row].v/cells["D"+row].v).toFixed(2))},
+    {title:"Upfront cost", description:"First month’s rent plus deposit",
+      formula:row=>`=SUM(B${row},C${row})`, value:(cells,row)=>cells["B"+row].v+cells["C"+row].v},
+  ]},
+  "Family accounts":{ width:7, accepted:[], ideas:[
+    {title:"Payment window", description:"Early, middle, or late in the month",
+      formula:row=>`=IF(C${row}<=10,"Early",IF(C${row}<=20,"Middle","Late"))`,
+      value:(cells,row)=>cells["C"+row].v<=10?"Early":cells["C"+row].v<=20?"Middle":"Late"},
+  ]},
+};
+let cur="Flat hunt", sel="B2";
+const family=WB["Family accounts"];
+for(let row=2;row<=7;row++){
+  family.cells["D"+row]=C("🔌 Needs Gmail",{
+    f:`=AI.ASK("Was this bill paid this month?", A${row}:C${row})`, grey:true,
+    note:"Connect Gmail in the planned demo to check payment receipts.",
+  });
+}
 
 /* ============ render ============ */
 const grid=$("grid");
 function fmt(v){ if(v===true)return"TRUE"; if(v===false)return"FALSE"; if(typeof v==="number")return v.toLocaleString("en-IN"); return v??""; }
+function visibleSuggestions(){
+  const sheet=suggestionSheets[cur];
+  if(!suggestionsEnabled||!sheet) return [];
+  const {width,accepted,ideas}=sheet;
+  const choices=ideas.filter(idea=>!accepted.includes(idea));
+  const column=sel.charCodeAt(0)-65, row=Number(sel.slice(1));
+  return column<width+accepted.length+choices.length&&row<=WB[cur].rows[1]?choices:[];
+}
+function acceptSuggestion(idea){
+  const sheet=suggestionSheets[cur], {cells,rows}=WB[cur];
+  const column=L(sheet.width+sheet.accepted.length);
+  cells[column+"1"]=C(idea.title);
+  for(let row=rows[0];row<=rows[1];row++){
+    cells[column+row]=C(idea.value(cells,row),{f:idea.formula(row)});
+  }
+  sheet.accepted.push(idea);
+  sel=column+"1";
+  render();
+  toast(`Added ${idea.title}.`);
+}
 function render(){
-  const s=WB[cur];
+  const s=WB[cur], previews=visibleSuggestions(), spec=suggestionSheets[cur];
+  const previewStart=spec?spec.width+spec.accepted.length:COLS;
   let h="<thead><tr><th></th>"+[...Array(COLS)].map((_,i)=>`<th>${L(i)}</th>`).join("")+"</tr></thead><tbody>";
   for(let r=1;r<=18;r++){
     let rc=r===1?"h":"";
@@ -150,20 +207,24 @@ function render(){
     h+=`<tr class="${rc}"><th>${r}</th>`;
     for(let c=0;c<COLS;c++){
       const a=L(c)+r, x=s.cells[a]||{};
+      const preview=r<=3?previews[c-previewStart]:undefined;
       const k=[x.note?"note":"",x.busy?"busy":"",x.grey?"grey":"",x.changed?"changed":"",x.amber?"amber":"",x.green?"green":"",
-               x.cb!==undefined?"cb":"",typeof x.v==="number"?"num":"",(r===1&&String(x.v||"").startsWith("?"))?"qh":"",a===sel?"sel":""].join(" ");
-      const inner = x.cb!==undefined ? `<input type="checkbox" ${x.cb?"checked":""} data-cb="${a}">` : fmt(x.v);
+               x.cb!==undefined||preview&&r===3?"cb":"",typeof x.v==="number"?"num":"",preview?"preview":"",a===sel?"sel":""].join(" ");
+      const inner = preview ? [preview.title,preview.description,
+        `<input type="checkbox" aria-label="Add ${preview.title}" data-preview="${c-previewStart}">`][r-1]
+        : x.cb!==undefined ? `<input type="checkbox" ${x.cb?"checked":""} data-cb="${a}">` : fmt(x.v);
       h+=`<td data-a="${a}" class="${k}">${inner}</td>`;
     }
     h+="</tr>";
   }
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll("td").forEach(td=>td.onclick=e=>{
-    if(e.target.dataset.cb) return;
+    if(e.target.dataset.cb||e.target.dataset.preview!==undefined) return;
     sel=td.dataset.a; const x=WB[cur].cells[sel]; if(x) x.changed=false;   // yellow clears on select
     render();
   });
   grid.querySelectorAll("input[data-cb]").forEach(i=>i.onchange=()=>tick(i.dataset.cb));
+  grid.querySelectorAll("input[data-preview]").forEach(i=>i.onchange=()=>acceptSuggestion(previews[Number(i.dataset.preview)]));
   $("ref").textContent=sel;
   const x=s.cells[sel]||{};
   $("fx").innerHTML=x.f? x.f.replace(/^=(AI\.[A-Z]+)/,'=<span class="fn">$1</span>') : x.cb!==undefined ? (x.cb?"TRUE":"FALSE") : fmt(x.v);
@@ -184,23 +245,14 @@ document.addEventListener("mouseover",e=>{
 });
 
 /* ============ ribbon ============ */
-$("b-fill").onclick=async()=>{
-  const s=WB[cur], col=sel[0], hdr=String(s.cells[col+"1"]?.v||"");
-  if(cur==="Flat hunt" && col==="E" && hdr.startsWith("?")) return fillFlat(col,hdr);
-  if(cur!=="Family accounts"||!ANS[col]||!hdr.startsWith("?")) return toast("Select a header that starts with ? first");
-  const q=hdr.slice(1).trim(), fn=col==="E"?"AI.CHECK":"AI.ASK";
-  for(let r=2;r<=7;r++) s.cells[col+r]=C("⏳",{f:`=${fn}("${q}", A${r}:C${r})`,busy:1});
+$("b-sheetdot").onclick=()=>{
+  const panel=$("settings");
+  panel.hidden=!panel.hidden;
+  $("b-sheetdot").setAttribute("aria-expanded",String(!panel.hidden));
+};
+$("suggest").onchange=event=>{
+  suggestionsEnabled=event.target.checked;
   render();
-  for(let r=2;r<=7;r++){
-    await sleep(350+Math.random()*450);
-    const c=s.cells[col+r]; c.busy=0;
-    if(col==="D" && !gmail){ c.v="🔌 Needs Gmail"; c.grey=1; c.note="This question needs your mail. Press Connect on the ribbon."; }
-    else { c.v=ANS[col][r-2][0]; c.note=ANS[col][r-2][1]; c.grey=0; }
-    render();
-  }
-  if(col==="D"&&!gmail) toast("Needs Gmail → press 🔌 Connect");
-  if(col==="E") toast("Rows turned red by Excel's own conditional formatting rule: =$E2=TRUE");
-  bump();
 };
 $("b-connect").onclick=()=>{$("scrim").style.display="flex";};
 $("deny").onclick=()=>{$("scrim").style.display="none";};
@@ -215,35 +267,31 @@ $("allow").onclick=async()=>{
     Object.assign(c,{v:ANS.D[r-2][0],note:ANS.D[r-2][1],busy:0}); render(); }
   bump();
 };
-$("b-refresh").onclick=async()=>{
-  if(cur!=="Flat hunt") return toast("Refresh re-asks the selected AI cells. Saved answers otherwise never change on their own.");
-  const s=WB["Flat hunt"]; s.cells.A1.v="⏳"; s.cells.A1.busy=1; render(); await sleep(1300);
-  const spill=[["Listing","Rent ₹","Deposit","Link","? Commute to office at 9am"],
-    ["2BHK, Sector 2, semi-furnished",36000,"3 months","nobroker.in/…"],["2BHK, Sector 7, gated",39500,"4 months","magicbricks.com/…"],
-    ["2BHK, Sector 1, near BDA",34000,"2 months","housing.com/…"],["2BHK, Sector 6, pet friendly",38000,"3 months","nobroker.in/…"],
-    ["2BHK, Sector 4, new building",40000,"5 months","99acres.com/…"],["2BHK, Sector 3, top floor",33500,"3 months","nobroker.in/…"]];
-  spill.forEach((row,i)=>row.forEach((v,j)=>{const a=L(j)+(i+1); if(a==="A1") Object.assign(s.cells.A1,{v,busy:0,note:"Web search, 6 listings, just now"}); else s.cells[a]=C(v);}));
-  toast("AI.LIST spilled a table. E1 is a ? header you can Fill."); sel="E1"; render(); bump();
-};
-async function fillFlat(col,hdr){
-  const s=WB["Flat hunt"], vals=["24 min","31 min","19 min","28 min","26 min","22 min"];
-  for(let r=2;r<=7;r++) s.cells[col+r]=C("⏳",{f:`=AI.ASK("${hdr.slice(1).trim()}", A${r}:D${r})`,busy:1});
+function scheduleDemoWatch(){
+  if(!gmail) return toast("Connect demo Gmail first.");
+  if(WB.Automations.n) return;
+  const s=WB["Family accounts"];
+  const question="Was this bill paid this month?";
+  for(let row=2;row<=7;row++){
+    s.cells["D"+row].f=`=AI.WATCH("${question}", A${row}:C${row}, "every 1 min")`;
+    s.cells["E"+row]=C(ANS.E[row-2][0],{f:`=AI.CHECK("Does this bill need attention?", A${row}:D${row})`,note:ANS.E[row-2][1]});
+  }
+  const a=WB.Automations;
+  for(let row=2;row<=7;row++){
+    Object.assign(a.cells,{["A"+row]:C(`'Family accounts'!D${row}`),["B"+row]:C(question),
+      ["C"+row]:C("every 1 min"),["D"+row]:C("—"),["E"+row]:C("in 1 min"),["F"+row]:C("Active")});
+  }
+  a.n=6;
+  a.rows=[2,7];
+  cur="Family accounts";
+  sel="D2";
   render();
-  for(let r=2;r<=7;r++){await sleep(350+Math.random()*400); Object.assign(s.cells[col+r],{v:vals[r-2],busy:0,note:"Maps estimate to Koramangala (from About me), weekday 9:00"}); render();}
-  bump();
+  toast("Demo WATCH formulas added. See Automations.");
 }
-$("b-watch").onclick=()=>{
-  const s=WB[cur], col=sel[0], c2=s.cells[col+"2"];
-  if(!c2||!c2.f) return toast("Select an AI column header first");
-  const q=String(s.cells[col+"1"].v).replace(/^\?\s*/,"");
-  for(let r=s.rows[0];r<=s.rows[1];r++){const c=s.cells[col+r]; if(c&&c.f) c.f=c.f.replace(/=AI\.(ASK|CHECK)\((.*)\)/,'=AI.WATCH($2, "every 1 min")');}
-  const A=WB.Automations; A.n++; const n=A.n+1;
-  Object.assign(A.cells,{["A"+n]:C(`${cur}!${col}2:${col}${s.rows[1]}`),["B"+n]:C(q),["C"+n]:C("every 1 min"),["D"+n]:C("—"),["E"+n]:C("in 1 min"),["F"+n]:C("● active")});
-  A.rows=[2,n]; toast("Now a standing order. See the ⏰ Automations sheet."); render(); bump();
-};
 
 /* ============ "overnight": what a WATCH run leaves behind ============ */
 async function overnight(){
+  if(!WB.Automations.n) return toast("Add the demo WATCH formulas first.");
   cur="Family accounts"; sel="A1"; render(); toast("You closed Excel. The automation kept running… reopening."); await sleep(1200);
   const s=WB["Family accounts"];
   // BESCOM got paid overnight → value changes, row stops being red
@@ -263,7 +311,7 @@ async function overnight(){
 }
 function tick(a){
   const s=WB[cur], c=s.cells[a]; c.cb=true; const row=a.slice(1), f=s.cells["F"+row];
-  render(); toast("Approved. Running it for real…");
+  render(); toast("Simulating the approved action…");
   setTimeout(()=>{
     const what=row==="3"?"✓ email sent 9:02":"✓ added to Calendar 9:02";
     Object.assign(f,{v:what,amber:0,green:1}); Object.assign(c,{amber:0,green:1}); render(); bump();
@@ -272,25 +320,30 @@ function tick(a){
 
 /* ============ mockup-only guide ============ */
 const STEPS=[
- "Click D1 (“? Paid this month”) → ✦ Fill column",
- "Cells say 🔌 Needs Gmail → press 🔌 Connect → Allow",
- "Click E1 → ✦ Fill column (rows go red via native conditional formatting)",
- "Click D1 → ⏰ Keep fresh (see ⏰ Automations sheet)",
- "Press “Next morning” below",
- "Yellow = changed. Tick an amber ☐ to approve",
- "Second act: open Flat hunt → ↻ Refresh, then click E1 → ✦ Fill column",
+ "Open Sheetdot and enable column suggestions.",
+ "Tick a grey suggestion in Flat hunt to add a formula column.",
+ "Select a cell below the table, then return. Unused suggestions reappear.",
+ "For the planned Family accounts demo, connect Gmail and add the demo WATCH formulas.",
+ "Press Next morning, then tick an amber checkbox to simulate approval.",
 ];
+let leftFlatTable=false;
 function bump(){
-  const s=WB["Family accounts"];
-  const done=[ !!s.cells.D2?.f, gmail && s.cells.D2?.v?.startsWith("✓"), !!s.cells.E2?.f && !s.cells.E2.busy,
-    WB.Automations.n>0, !!s.cells.F3, s.cells.G3?.cb||s.cells.G2?.cb, !!WB["Flat hunt"].cells.E2 && !WB["Flat hunt"].cells.E2.busy ];
-  step=done.filter(Boolean).length; renderDemo(done);
+  if(suggestionsEnabled&&cur==="Flat hunt"&&!visibleSuggestions().length&&Number(sel.slice(1))>WB[cur].rows[1]){
+    leftFlatTable=true;
+  }
+  const accepted=suggestionSheets["Flat hunt"].accepted.length;
+  const done=[suggestionsEnabled, accepted>0, leftFlatTable&&visibleSuggestions().length>0,
+    WB.Automations.n>0, WB["Family accounts"].cells.G3?.cb||WB["Family accounts"].cells.G2?.cb];
+  renderDemo(done);
 }
-function renderDemo(done=[]){
-  $("demo").innerHTML=`<div class="tag">Mockup controls — not part of the product</div>
-   <ol>${STEPS.map((t,i)=>`<li class="${done[i]?"done":""}">${t}</li>`).join("")}</ol>
-   <button class="pri" id="night">☾ Next morning</button><button id="reset">Reset</button>`;
-  $("night").onclick=overnight; $("reset").onclick=()=>location.reload();
+function renderDemo(done){
+  $("demo").innerHTML=`<div class="tag">Mockup controls</div>
+   <ol>${STEPS.map((text,index)=>`<li class="${done[index]?"done":""}">${text}</li>`).join("")}</ol>
+   <button id="demo-watch">Add demo WATCH formulas</button>
+   <button class="pri" id="night">Next morning</button><button id="reset">Reset</button>`;
+  $("demo-watch").onclick=scheduleDemoWatch;
+  $("night").onclick=overnight;
+  $("reset").onclick=()=>location.reload();
 }
 render();
 </script>
